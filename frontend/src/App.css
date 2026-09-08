@@ -1,0 +1,316 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f5f7fb;
+  color: #1f2937;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+/* Header */
+
+.header {
+  background: #1f2937;
+  color: white;
+  padding: 20px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.subtitle {
+  margin-top: 4px;
+  font-size: 14px;
+  color: #cbd5e1;
+}
+
+.new-button {
+  border: none;
+  background: white;
+  color: #1f2937;
+  padding: 11px 18px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.new-button:hover {
+  background: #e5e7eb;
+}
+
+/* Main */
+
+.main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 40px 25px;
+}
+
+.page-title {
+  margin-top: 0;
+  margin-bottom: 25px;
+  font-size: 30px;
+}
+
+/* Documents */
+
+.documents {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(250px, 1fr)
+  );
+  gap: 20px;
+}
+
+.document-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+}
+
+.document-icon {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.document-card h3 {
+  margin: 5px 0 8px;
+  font-size: 19px;
+}
+
+.document-card p {
+  margin: 0 0 15px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* Delete document */
+
+.delete-button {
+  border: none;
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.delete-button:hover {
+  background: #fecaca;
+}
+
+/* Create document form */
+
+.create-form {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 25px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+}
+
+.create-form h2 {
+  margin-top: 0;
+}
+
+.create-form input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  font-size: 15px;
+  margin-bottom: 15px;
+  color: #1f2937;
+  background: white;
+}
+
+/* Editor */
+
+.editor {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 25px;
+  margin-top: 30px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+}
+
+.editor h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+.editor > input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  font-size: 16px;
+  margin-bottom: 15px;
+  color: #1f2937;
+  background: white;
+}
+
+/* Blocks */
+
+.blocks {
+  margin-top: 20px;
+}
+
+.block {
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 15px;
+}
+
+.block-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+
+.block-toolbar select {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #1f2937;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.block textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  resize: vertical;
+  font-size: 15px;
+  color: #1f2937;
+  background: white;
+  font-family: Arial, sans-serif;
+}
+
+.block textarea:focus,
+.create-form input:focus,
+.editor > input:focus {
+  outline: none;
+  border-color: #6b7280;
+}
+
+/* Remove block */
+
+.block-delete {
+  border: none;
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.block-delete:hover {
+  background: #fecaca;
+}
+
+/* Add block */
+
+.add-block-button {
+  width: 100%;
+  border: 2px dashed #d1d5db;
+  background: white;
+  color: #374151;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.add-block-button:hover {
+  background: #f9fafb;
+}
+
+/* Buttons */
+
+.form-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.create-button,
+.cancel-button {
+  border: none;
+  padding: 10px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.create-button {
+  background: #1f2937;
+  color: white;
+}
+
+.create-button:hover {
+  background: #111827;
+}
+
+.cancel-button {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.cancel-button:hover {
+  background: #d1d5db;
+}
+
+/* Mobile */
+
+@media (max-width: 600px) {
+  .header {
+    padding: 18px;
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+
+  .main {
+    padding: 25px 15px;
+  }
+
+  .documents {
+    grid-template-columns: 1fr;
+  }
+
+  .block-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .block-toolbar select {
+    width: 100%;
+  }
+}

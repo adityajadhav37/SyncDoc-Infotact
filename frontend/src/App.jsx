@@ -16,8 +16,12 @@ function App() {
 
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-    // Fetch all documents
+    // ================================
+    // FETCH ALL DOCUMENTS
+    // ================================
+
     const fetchDocuments = async () => {
         try {
             setLoading(true);
@@ -42,7 +46,10 @@ function App() {
         fetchDocuments();
     }, []);
 
-    // Create document
+    // ================================
+    // CREATE DOCUMENT
+    // ================================
+
     const createDocument = async (event) => {
         event.preventDefault();
 
@@ -72,7 +79,9 @@ function App() {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || "Failed to create document");
+                throw new Error(
+                    data.message || "Failed to create document"
+                );
             }
 
             setNewDocumentTitle("");
@@ -87,23 +96,34 @@ function App() {
         }
     };
 
-    // Open document
+    // ================================
+    // OPEN DOCUMENT
+    // ================================
+
     const openDocument = (document) => {
         setSelectedDocument(document);
         setTitle(document.title);
         setNodes(document.nodes || []);
         setMessage("");
+        setHasUnsavedChanges(false);
     };
 
-    // Close editor
+    // ================================
+    // CLOSE EDITOR
+    // ================================
+
     const closeEditor = () => {
         setSelectedDocument(null);
         setTitle("");
         setNodes([]);
         setMessage("");
+        setHasUnsavedChanges(false);
     };
 
-    // Add new block
+    // ================================
+    // ADD NEW BLOCK
+    // ================================
+
     const addBlock = (type = "paragraph") => {
         const newBlock = {
             type,
@@ -115,9 +135,14 @@ function App() {
             ...currentNodes,
             newBlock,
         ]);
+
+        setHasUnsavedChanges(true);
     };
 
-    // Update block
+    // ================================
+    // UPDATE BLOCK
+    // ================================
+
     const updateBlock = (index, updatedBlock) => {
         setNodes((currentNodes) =>
             currentNodes.map((block, blockIndex) =>
@@ -126,18 +151,28 @@ function App() {
                     : block
             )
         );
+
+        setHasUnsavedChanges(true);
     };
 
-    // Delete block
+    // ================================
+    // DELETE BLOCK
+    // ================================
+
     const deleteBlock = (index) => {
         setNodes((currentNodes) =>
             currentNodes.filter(
                 (_, blockIndex) => blockIndex !== index
             )
         );
+
+        setHasUnsavedChanges(true);
     };
 
-    // Save document
+    // ================================
+    // SAVE DOCUMENT
+    // ================================
+
     const saveDocument = async () => {
         if (!selectedDocument) {
             return;
@@ -177,6 +212,9 @@ function App() {
             setTitle(data.title);
             setNodes(data.nodes || []);
 
+            // Document is now saved
+            setHasUnsavedChanges(false);
+
             await fetchDocuments();
 
             setMessage("Document saved successfully.");
@@ -187,7 +225,10 @@ function App() {
         }
     };
 
-    // Delete document
+    // ================================
+    // DELETE DOCUMENT
+    // ================================
+
     const deleteDocument = async () => {
         if (!selectedDocument) {
             return;
@@ -231,9 +272,14 @@ function App() {
         }
     };
 
+    // ================================
+    // RENDER UI
+    // ================================
+
     return (
         <div className="app">
-            {/* Header */}
+
+            {/* HEADER */}
             <header className="app-header">
                 <div>
                     <h1>SyncDoc</h1>
@@ -248,14 +294,14 @@ function App() {
                 </button>
             </header>
 
-            {/* Status message */}
+            {/* STATUS MESSAGE */}
             {message && (
                 <div className="status-message">
                     {message}
                 </div>
             )}
 
-            {/* Create document form */}
+            {/* CREATE DOCUMENT FORM */}
             {showCreateForm && (
                 <div className="create-form-container">
                     <form onSubmit={createDocument}>
@@ -296,16 +342,21 @@ function App() {
                 </div>
             )}
 
-            {/* Main workspace */}
+            {/* MAIN WORKSPACE */}
             <main className="workspace">
-                {/* Document browser */}
+
+                {/* DOCUMENT SIDEBAR */}
                 <aside className="document-sidebar">
+
                     <div className="sidebar-header">
                         <div>
                             <h2>My Documents</h2>
+
                             <span>
                                 {documents.length} document
-                                {documents.length !== 1 ? "s" : ""}
+                                {documents.length !== 1
+                                    ? "s"
+                                    : ""}
                             </span>
                         </div>
                     </div>
@@ -320,6 +371,7 @@ function App() {
                         </p>
                     ) : (
                         <div className="document-list">
+
                             {documents.map((document) => (
                                 <button
                                     key={document._id}
@@ -346,14 +398,18 @@ function App() {
                                     </span>
                                 </button>
                             ))}
+
                         </div>
                     )}
                 </aside>
 
-                {/* Editor */}
+                {/* EDITOR WORKSPACE */}
                 <section className="editor-workspace">
+
                     {!selectedDocument ? (
+
                         <div className="editor-empty">
+
                             <div className="empty-icon">
                                 📄
                             </div>
@@ -364,32 +420,57 @@ function App() {
                                 Choose a document from the sidebar
                                 to start editing.
                             </p>
+
                         </div>
+
                     ) : (
+
                         <>
-                            {/* Editor header */}
+
+                            {/* EDITOR HEADER */}
                             <div className="editor-header">
+
                                 <div className="editor-title-section">
+
                                     <input
                                         className="document-title-input"
                                         value={title}
-                                        onChange={(event) =>
+                                        onChange={(event) => {
                                             setTitle(
                                                 event.target.value
-                                            )
-                                        }
+                                            );
+                                            setHasUnsavedChanges(true);
+                                        }}
                                         placeholder="Document title"
                                     />
 
-                                    <span className="editor-status">
-                                        {nodes.length} block
-                                        {nodes.length !== 1
-                                            ? "s"
-                                            : ""}
-                                    </span>
+                                    <div className="editor-status">
+
+                                        <span>
+                                            {nodes.length} block
+                                            {nodes.length !== 1
+                                                ? "s"
+                                                : ""}
+                                        </span>
+
+                                        <span
+                                            className={
+                                                hasUnsavedChanges
+                                                    ? "save-status unsaved"
+                                                    : "save-status saved"
+                                            }
+                                        >
+                                            {hasUnsavedChanges
+                                                ? "● Unsaved changes"
+                                                : "✓ All changes saved"}
+                                        </span>
+
+                                    </div>
+
                                 </div>
 
                                 <div className="editor-actions">
+
                                     <button
                                         className="secondary-button"
                                         onClick={closeEditor}
@@ -413,11 +494,14 @@ function App() {
                                             ? "Saving..."
                                             : "Save"}
                                     </button>
+
                                 </div>
+
                             </div>
 
-                            {/* Block toolbar */}
+                            {/* BLOCK ADD TOOLBAR */}
                             <div className="block-add-toolbar">
+
                                 <span>Add block:</span>
 
                                 <button
@@ -451,12 +535,16 @@ function App() {
                                 >
                                     + Code
                                 </button>
+
                             </div>
 
-                            {/* Blocks */}
+                            {/* BLOCKS */}
                             <div className="blocks-container">
+
                                 {nodes.length === 0 ? (
+
                                     <div className="no-blocks">
+
                                         <p>
                                             This document has no
                                             blocks yet.
@@ -472,8 +560,11 @@ function App() {
                                         >
                                             Add Paragraph
                                         </button>
+
                                     </div>
+
                                 ) : (
+
                                     nodes.map(
                                         (block, index) => (
                                             <Block
@@ -489,12 +580,18 @@ function App() {
                                             />
                                         )
                                     )
+
                                 )}
+
                             </div>
+
                         </>
                     )}
+
                 </section>
+
             </main>
+
         </div>
     );
 }

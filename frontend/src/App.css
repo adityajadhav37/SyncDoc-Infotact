@@ -305,11 +305,30 @@ button {
 }
 
 .editor-status {
-    display: inline-block;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     margin-left: 8px;
     margin-top: 5px;
     color: #6b7280;
     font-size: 13px;
+}
+
+.save-status {
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+}
+
+.save-status.unsaved {
+    color: #b45309;
+    background: #fef3c7;
+}
+
+.save-status.saved {
+    color: #15803d;
+    background: #dcfce7;
 }
 
 .editor-actions {
@@ -508,6 +527,10 @@ button {
     }
 
     .editor-actions {
+        flex-wrap: wrap;
+    }
+
+    .editor-status {
         flex-wrap: wrap;
     }
 

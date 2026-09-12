@@ -1,26 +1,69 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { io } from "socket.io-client";
+import * as Y from "yjs";
+
 import Block from "./Block";
+
+import {
+    getYDocument,
+    getDocumentManager,
+    applyRemoteUpdate,
+    removeYDocument,
+    REMOTE_ORIGIN,
+} from "./realtime/yjsClient";
+
 import "./App.css";
 
 const API_URL = "http://localhost:5000/api/documents";
 
+const socket = io("http://localhost:5000");
+
+// ========================================
+// CONVERT YJS BLOCKS TO REACT OBJECTS
+// ========================================
+
+const getNodesFromYDoc = (ydoc) => {
+    const blocksArray = ydoc.getArray("blocks");
+
+    return blocksArray.toArray().map((block) => ({
+        id: block.get("id"),
+        type: block.get("type") || "paragraph",
+        content: block.get("content") || "",
+        children: JSON.parse(
+            block.get("children") || "[]"
+        ),
+    }));
+};
+
+// ========================================
+// APP
+// ========================================
+
 function App() {
     const [documents, setDocuments] = useState([]);
-    const [selectedDocument, setSelectedDocument] = useState(null);
+    const [selectedDocument, setSelectedDocument] =
+        useState(null);
 
     const [title, setTitle] = useState("");
     const [nodes, setNodes] = useState([]);
 
-    const [newDocumentTitle, setNewDocumentTitle] = useState("");
-    const [showCreateForm, setShowCreateForm] = useState(false);
+    const [newDocumentTitle, setNewDocumentTitle] =
+        useState("");
+
+    const [showCreateForm, setShowCreateForm] =
+        useState(false);
 
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] =
+        useState(false);
 
-    // ================================
+    // Keep track of the currently joined document.
+    const joinedDocumentId = useRef(null);
+
+    // ========================================
     // FETCH ALL DOCUMENTS
-    // ================================
+    // ========================================
 
     const fetchDocuments = async () => {
         try {
@@ -29,7 +72,9 @@ function App() {
             const response = await fetch(API_URL);
 
             if (!response.ok) {
-                throw new Error("Failed to fetch documents");
+                throw new Error(
+                    "Failed to fetch documents"
+                );
             }
 
             const data = await response.json();
@@ -42,144 +87,180 @@ function App() {
         }
     };
 
+    // ========================================
+    // INITIAL DOCUMENT FETCH
+    // ========================================
+
     useEffect(() => {
         fetchDocuments();
     }, []);
 
-    // ================================
+    // ========================================
+    // SOCKET.IO + YJS COLLABORATION
+    // ========================================
+
+    useEffect(() => {
+        // ----------------------------------------
+        // DOCUMENT JOINED
+        // ----------------------------------------
+
+        const handleDocumentJoined = (data) => {
+            console.log(
+                "Collaborative document joined:",
+                data
+            );
+
+            const ydoc = getYDocument(
+                data.documentId
+            );
+
+            // Apply the initial server Yjs state.
+            // applyRemoteUpdate() protects this update
+            // from being sent back to the server.
+            if (data.yjsState) {
+                applyRemoteUpdate(
+                    data.documentId,
+                    data.yjsState
+                );
+            }
+
+            const updatedNodes =
+                getNodesFromYDoc(ydoc);
+
+            setNodes(updatedNodes);
+
+            setTitle(
+                data.title || ""
+            );
+
+            setHasUnsavedChanges(false);
+
+            console.log(
+                "Initial Yjs state applied:",
+                data.documentId
+            );
+        };
+
+        // ----------------------------------------
+        // RECEIVE YJS UPDATE
+        // ----------------------------------------
+
+        const handleYjsUpdate = ({
+            documentId,
+            update,
+        }) => {
+            if (!documentId || !update) {
+                return;
+            }
+
+            console.log(
+                "Received Yjs update:",
+                documentId
+            );
+
+            // Apply the remote update through the
+            // collaboration manager.
+            applyRemoteUpdate(
+                documentId,
+                update
+            );
+
+            // Update React state only if this is
+            // the document currently being edited.
+            if (
+                joinedDocumentId.current ===
+                documentId
+            ) {
+                const ydoc =
+                    getYDocument(
+                        documentId
+                    );
+
+                const updatedNodes =
+                    getNodesFromYDoc(
+                        ydoc
+                    );
+
+                setNodes(updatedNodes);
+
+                setHasUnsavedChanges(true);
+            }
+
+            console.log(
+                "Remote Yjs update applied:",
+                documentId
+            );
+        };
+
+        // ----------------------------------------
+        // DOCUMENT ERROR
+        // ----------------------------------------
+
+        const handleDocumentError = (data) => {
+            console.error(
+                "Document error:",
+                data
+            );
+
+            setMessage(
+                data?.message ||
+                    "Collaborative document error."
+            );
+        };
+
+        // ----------------------------------------
+        // REGISTER SOCKET LISTENERS
+        // ----------------------------------------
+
+        socket.on(
+            "document-joined",
+            handleDocumentJoined
+        );
+
+        socket.on(
+            "yjs-update",
+            handleYjsUpdate
+        );
+
+        socket.on(
+            "document-error",
+            handleDocumentError
+        );
+
+        // ----------------------------------------
+        // CLEANUP
+        // ----------------------------------------
+
+        return () => {
+            socket.off(
+                "document-joined",
+                handleDocumentJoined
+            );
+
+            socket.off(
+                "yjs-update",
+                handleYjsUpdate
+            );
+
+            socket.off(
+                "document-error",
+                handleDocumentError
+            );
+        };
+    }, []);
+
+    // ========================================
     // CREATE DOCUMENT
-    // ================================
+    // ========================================
 
     const createDocument = async (event) => {
         event.preventDefault();
 
         if (!newDocumentTitle.trim()) {
-            setMessage("Please enter a document title.");
-            return;
-        }
+            setMessage(
+                "Please enter a document title."
+            );
 
-        try {
-            const response = await fetch(API_URL, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    title: newDocumentTitle.trim(),
-                    nodes: [
-                        {
-                            type: "paragraph",
-                            content: "",
-                            children: [],
-                        },
-                    ],
-                }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(
-                    data.message || "Failed to create document"
-                );
-            }
-
-            setNewDocumentTitle("");
-            setShowCreateForm(false);
-            setMessage("Document created successfully.");
-
-            await fetchDocuments();
-
-            openDocument(data);
-        } catch (error) {
-            setMessage(error.message);
-        }
-    };
-
-    // ================================
-    // OPEN DOCUMENT
-    // ================================
-
-    const openDocument = (document) => {
-        setSelectedDocument(document);
-        setTitle(document.title);
-        setNodes(document.nodes || []);
-        setMessage("");
-        setHasUnsavedChanges(false);
-    };
-
-    // ================================
-    // CLOSE EDITOR
-    // ================================
-
-    const closeEditor = () => {
-        setSelectedDocument(null);
-        setTitle("");
-        setNodes([]);
-        setMessage("");
-        setHasUnsavedChanges(false);
-    };
-
-    // ================================
-    // ADD NEW BLOCK
-    // ================================
-
-    const addBlock = (type = "paragraph") => {
-        const newBlock = {
-            type,
-            content: "",
-            children: [],
-        };
-
-        setNodes((currentNodes) => [
-            ...currentNodes,
-            newBlock,
-        ]);
-
-        setHasUnsavedChanges(true);
-    };
-
-    // ================================
-    // UPDATE BLOCK
-    // ================================
-
-    const updateBlock = (index, updatedBlock) => {
-        setNodes((currentNodes) =>
-            currentNodes.map((block, blockIndex) =>
-                blockIndex === index
-                    ? updatedBlock
-                    : block
-            )
-        );
-
-        setHasUnsavedChanges(true);
-    };
-
-    // ================================
-    // DELETE BLOCK
-    // ================================
-
-    const deleteBlock = (index) => {
-        setNodes((currentNodes) =>
-            currentNodes.filter(
-                (_, blockIndex) => blockIndex !== index
-            )
-        );
-
-        setHasUnsavedChanges(true);
-    };
-
-    // ================================
-    // SAVE DOCUMENT
-    // ================================
-
-    const saveDocument = async () => {
-        if (!selectedDocument) {
-            return;
-        }
-
-        if (!title.trim()) {
-            setMessage("Document title cannot be empty.");
             return;
         }
 
@@ -187,56 +268,463 @@ function App() {
             setLoading(true);
 
             const response = await fetch(
-                `${API_URL}/${selectedDocument._id}`,
+                API_URL,
                 {
-                    method: "PUT",
+                    method: "POST",
+
                     headers: {
-                        "Content-Type": "application/json",
+                        "Content-Type":
+                            "application/json",
                     },
+
                     body: JSON.stringify({
-                        title: title.trim(),
-                        nodes,
+                        title:
+                            newDocumentTitle.trim(),
+
+                        nodes: [
+                            {
+                                type: "paragraph",
+                                content: "",
+                                children: [],
+                            },
+                        ],
                     }),
                 }
             );
 
-            const data = await response.json();
+            const data =
+                await response.json();
 
             if (!response.ok) {
                 throw new Error(
-                    data.message || "Failed to save document"
+                    data.message ||
+                        "Failed to create document"
                 );
             }
 
-            setSelectedDocument(data);
-            setTitle(data.title);
-            setNodes(data.nodes || []);
+            setNewDocumentTitle("");
+            setShowCreateForm(false);
 
-            // Document is now saved
-            setHasUnsavedChanges(false);
+            setMessage(
+                "Document created successfully."
+            );
 
             await fetchDocuments();
 
-            setMessage("Document saved successfully.");
+            openDocument(data);
         } catch (error) {
-            setMessage(error.message);
+            setMessage(
+                error.message
+            );
         } finally {
             setLoading(false);
         }
     };
 
-    // ================================
+    // ========================================
+    // OPEN DOCUMENT
+    // ========================================
+
+    const openDocument = (document) => {
+        // ----------------------------------------
+        // LEAVE PREVIOUS DOCUMENT
+        // ----------------------------------------
+
+        if (
+            joinedDocumentId.current &&
+            joinedDocumentId.current !==
+                document._id
+        ) {
+            socket.emit(
+                "leave-document",
+                joinedDocumentId.current
+            );
+
+            removeYDocument(
+                joinedDocumentId.current
+            );
+        }
+
+        // ----------------------------------------
+        // SET CURRENT DOCUMENT
+        // ----------------------------------------
+
+        setSelectedDocument(document);
+
+        setTitle(
+            document.title
+        );
+
+        setNodes(
+            document.nodes || []
+        );
+
+        setMessage("");
+
+        setHasUnsavedChanges(false);
+
+        joinedDocumentId.current =
+            document._id;
+
+        // ----------------------------------------
+        // GET YJS DOCUMENT
+        // ----------------------------------------
+
+        const ydoc =
+            getYDocument(
+                document._id
+            );
+
+        console.log(
+            "Yjs document created:",
+            ydoc
+        );
+
+        // ----------------------------------------
+        // GET COLLABORATION MANAGER
+        // ----------------------------------------
+
+        const manager =
+            getDocumentManager(
+                document._id
+            );
+
+        // ----------------------------------------
+        // LOCAL YJS UPDATE LISTENER
+        // ----------------------------------------
+
+        if (
+    manager &&
+    !manager.updateListener
+) {
+    const syncDocListener = (
+        update,
+        origin
+    ) => {
+        // Ignore updates created while
+        // applying remote/server state.
+        if (
+            manager.remoteUpdate ||
+            origin === REMOTE_ORIGIN
+        ) {
+            console.log(
+                "Ignoring remote Yjs update"
+            );
+
+            return;
+        }
+
+        // Send only genuine local changes
+        // to the collaboration server.
+        console.log(
+            "Sending local Yjs update:",
+            document._id
+        );
+
+        socket.emit(
+            "yjs-update",
+            {
+                documentId:
+                    document._id,
+
+                update:
+                    Array.from(update),
+            }
+        );
+    };
+
+    // Store the listener so it can be
+    // removed when the document is closed.
+    manager.updateListener =
+        syncDocListener;
+
+    ydoc.on(
+        "update",
+        syncDocListener
+    );
+}
+
+        // ----------------------------------------
+        // JOIN SOCKET.IO ROOM
+        // ----------------------------------------
+
+        socket.emit(
+            "join-document",
+            document._id
+        );
+    };
+
+    // ========================================
+    // CLOSE EDITOR
+    // ========================================
+
+    const closeEditor = () => {
+        if (selectedDocument) {
+            socket.emit(
+                "leave-document",
+                selectedDocument._id
+            );
+
+            removeYDocument(
+                selectedDocument._id
+            );
+        }
+
+        joinedDocumentId.current =
+            null;
+
+        setSelectedDocument(null);
+
+        setTitle("");
+
+        setNodes([]);
+
+        setMessage("");
+
+        setHasUnsavedChanges(false);
+    };
+
+    // ========================================
+    // ADD NEW BLOCK
+    // ========================================
+
+    const addBlock = (
+        type = "paragraph"
+    ) => {
+        if (!selectedDocument) {
+            return;
+        }
+
+        const ydoc =
+            getYDocument(
+                selectedDocument._id
+            );
+
+        const blocksArray =
+            ydoc.getArray("blocks");
+
+        const newBlock =
+            new Y.Map();
+
+        newBlock.set(
+            "id",
+            `block-${Date.now()}`
+        );
+
+        newBlock.set(
+            "type",
+            type
+        );
+
+        newBlock.set(
+            "content",
+            ""
+        );
+
+        newBlock.set(
+            "children",
+            JSON.stringify([])
+        );
+
+        blocksArray.push([
+            newBlock,
+        ]);
+
+        setNodes(
+            getNodesFromYDoc(
+                ydoc
+            )
+        );
+
+        setHasUnsavedChanges(true);
+    };
+
+    // ========================================
+    // UPDATE BLOCK
+    // ========================================
+
+    const updateBlock = (
+        index,
+        updatedBlock
+    ) => {
+        if (!selectedDocument) {
+            return;
+        }
+
+        const ydoc =
+            getYDocument(
+                selectedDocument._id
+            );
+
+        const blocksArray =
+            ydoc.getArray("blocks");
+
+        const yBlock =
+            blocksArray.get(index);
+
+        if (yBlock) {
+            yBlock.set(
+                "type",
+                updatedBlock.type
+            );
+
+            yBlock.set(
+                "content",
+                updatedBlock.content
+            );
+
+            yBlock.set(
+                "children",
+                JSON.stringify(
+                    updatedBlock.children ||
+                        []
+                )
+            );
+        }
+
+        setNodes(
+            (currentNodes) =>
+                currentNodes.map(
+                    (
+                        block,
+                        blockIndex
+                    ) =>
+                        blockIndex ===
+                        index
+                            ? updatedBlock
+                            : block
+                )
+        );
+
+        setHasUnsavedChanges(true);
+    };
+
+    // ========================================
+    // DELETE BLOCK
+    // ========================================
+
+    const deleteBlock = (
+        index
+    ) => {
+        if (!selectedDocument) {
+            return;
+        }
+
+        const ydoc =
+            getYDocument(
+                selectedDocument._id
+            );
+
+        const blocksArray =
+            ydoc.getArray("blocks");
+
+        blocksArray.delete(
+            index,
+            1
+        );
+
+        setNodes(
+            getNodesFromYDoc(
+                ydoc
+            )
+        );
+
+        setHasUnsavedChanges(true);
+    };
+
+    // ========================================
+    // SAVE DOCUMENT
+    // ========================================
+
+    const saveDocument = async () => {
+        if (!selectedDocument) {
+            return;
+        }
+
+        if (!title.trim()) {
+            setMessage(
+                "Document title cannot be empty."
+            );
+
+            return;
+        }
+
+        try {
+            setLoading(true);
+
+            const response =
+                await fetch(
+                    `${API_URL}/${selectedDocument._id}`,
+                    {
+                        method: "PUT",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+                        },
+
+                        body: JSON.stringify({
+                            title:
+                                title.trim(),
+
+                            nodes,
+                        }),
+                    }
+                );
+
+            const data =
+                await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.message ||
+                        "Failed to save document"
+                );
+            }
+
+            setSelectedDocument(
+                data
+            );
+
+            setTitle(
+                data.title
+            );
+
+            setNodes(
+                data.nodes || []
+            );
+
+            setHasUnsavedChanges(
+                false
+            );
+
+            await fetchDocuments();
+
+            setMessage(
+                "Document saved successfully."
+            );
+        } catch (error) {
+            setMessage(
+                error.message
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ========================================
     // DELETE DOCUMENT
-    // ================================
+    // ========================================
 
     const deleteDocument = async () => {
         if (!selectedDocument) {
             return;
         }
 
-        const confirmed = window.confirm(
-            "Are you sure you want to delete this document?"
-        );
+        const confirmed =
+            window.confirm(
+                "Are you sure you want to delete this document?"
+            );
 
         if (!confirmed) {
             return;
@@ -245,18 +733,21 @@ function App() {
         try {
             setLoading(true);
 
-            const response = await fetch(
-                `${API_URL}/${selectedDocument._id}`,
-                {
-                    method: "DELETE",
-                }
-            );
+            const response =
+                await fetch(
+                    `${API_URL}/${selectedDocument._id}`,
+                    {
+                        method: "DELETE",
+                    }
+                );
 
-            const data = await response.json();
+            const data =
+                await response.json();
 
             if (!response.ok) {
                 throw new Error(
-                    data.message || "Failed to delete document"
+                    data.message ||
+                        "Failed to delete document"
                 );
             }
 
@@ -264,55 +755,93 @@ function App() {
 
             await fetchDocuments();
 
-            setMessage("Document deleted successfully.");
+            setMessage(
+                "Document deleted successfully."
+            );
         } catch (error) {
-            setMessage(error.message);
+            setMessage(
+                error.message
+            );
         } finally {
             setLoading(false);
         }
     };
 
-    // ================================
+    // ========================================
     // RENDER UI
-    // ================================
+    // ========================================
 
     return (
         <div className="app">
 
+            {/* ================================= */}
             {/* HEADER */}
+            {/* ================================= */}
+
             <header className="app-header">
+
                 <div>
-                    <h1>SyncDoc</h1>
-                    <p>Collaborative Document Engine</p>
+                    <h1>
+                        SyncDoc
+                    </h1>
+
+                    <p>
+                        Collaborative Document Engine
+                    </p>
                 </div>
 
                 <button
                     className="primary-button"
-                    onClick={() => setShowCreateForm(true)}
+                    onClick={() =>
+                        setShowCreateForm(
+                            true
+                        )
+                    }
                 >
                     + New Document
                 </button>
+
             </header>
 
+            {/* ================================= */}
             {/* STATUS MESSAGE */}
+            {/* ================================= */}
+
             {message && (
                 <div className="status-message">
                     {message}
                 </div>
             )}
 
+            {/* ================================= */}
             {/* CREATE DOCUMENT FORM */}
+            {/* ================================= */}
+
             {showCreateForm && (
                 <div className="create-form-container">
-                    <form onSubmit={createDocument}>
-                        <h2>Create New Document</h2>
+
+                    <form
+                        onSubmit={
+                            createDocument
+                        }
+                    >
+
+                        <h2>
+                            Create New Document
+                        </h2>
 
                         <input
                             type="text"
-                            value={newDocumentTitle}
-                            onChange={(event) =>
+                            value={
+                                newDocumentTitle
+                            }
+                            onChange={(
+                                event
+                            ) =>
                                 setNewDocumentTitle(
-                                    event.target.value
+                                    event
+                                        .target
+                                        .value
                                 )
                             }
                             placeholder="Enter document title"
@@ -320,6 +849,7 @@ function App() {
                         />
 
                         <div className="form-actions">
+
                             <button
                                 type="submit"
                                 className="primary-button"
@@ -331,79 +861,140 @@ function App() {
                                 type="button"
                                 className="secondary-button"
                                 onClick={() => {
-                                    setShowCreateForm(false);
-                                    setNewDocumentTitle("");
+                                    setShowCreateForm(
+                                        false
+                                    );
+
+                                    setNewDocumentTitle(
+                                        ""
+                                    );
                                 }}
                             >
                                 Cancel
                             </button>
+
                         </div>
+
                     </form>
+
                 </div>
             )}
 
+            {/* ================================= */}
             {/* MAIN WORKSPACE */}
+            {/* ================================= */}
+
             <main className="workspace">
 
+                {/* ================================= */}
                 {/* DOCUMENT SIDEBAR */}
+                {/* ================================= */}
+
                 <aside className="document-sidebar">
 
                     <div className="sidebar-header">
+
                         <div>
-                            <h2>My Documents</h2>
+
+                            <h2>
+                                My Documents
+                            </h2>
 
                             <span>
-                                {documents.length} document
-                                {documents.length !== 1
-                                    ? "s"
-                                    : ""}
+                                {
+                                    documents.length
+                                }{" "}
+                                document
+                                {
+                                    documents.length !==
+                                    1
+                                        ? "s"
+                                        : ""
+                                }
                             </span>
+
                         </div>
+
                     </div>
 
-                    {loading && documents.length === 0 ? (
+                    {loading &&
+                    documents.length ===
+                        0 ? (
+
                         <p className="empty-message">
                             Loading documents...
                         </p>
-                    ) : documents.length === 0 ? (
+
+                    ) : documents.length ===
+                      0 ? (
+
                         <p className="empty-message">
                             No documents yet.
                         </p>
+
                     ) : (
+
                         <div className="document-list">
 
-                            {documents.map((document) => (
-                                <button
-                                    key={document._id}
-                                    className={`document-card ${
-                                        selectedDocument?._id ===
-                                        document._id
-                                            ? "active"
-                                            : ""
-                                    }`}
-                                    onClick={() =>
-                                        openDocument(document)
-                                    }
-                                >
-                                    <strong>
-                                        {document.title}
-                                    </strong>
+                            {documents.map(
+                                (document) => (
 
-                                    <span>
-                                        {document.nodes?.length || 0}{" "}
-                                        block
-                                        {document.nodes?.length !== 1
-                                            ? "s"
-                                            : ""}
-                                    </span>
-                                </button>
-                            ))}
+                                    <button
+                                        key={
+                                            document._id
+                                        }
+                                        className={`document-card ${
+                                            selectedDocument?._id ===
+                                            document._id
+                                                ? "active"
+                                                : ""
+                                        }`}
+                                        onClick={() =>
+                                            openDocument(
+                                                document
+                                            )
+                                        }
+                                    >
+
+                                        <strong>
+                                            {
+                                                document.title
+                                            }
+                                        </strong>
+
+                                        <span>
+                                            {
+                                                document
+                                                    .nodes
+                                                    ?.length ||
+                                                0
+                                            }{" "}
+                                            block
+                                            {
+                                                document
+                                                    .nodes
+                                                    ?.length !==
+                                                1
+                                                    ? "s"
+                                                    : ""
+                                            }
+                                        </span>
+
+                                    </button>
+
+                                )
+                            )}
 
                         </div>
+
                     )}
+
                 </aside>
 
-                {/* EDITOR WORKSPACE */}
+                {/* ================================= */}
+                {/* EDITOR */}
+                {/* ================================= */}
+
                 <section className="editor-workspace">
 
                     {!selectedDocument ? (
@@ -414,11 +1005,14 @@ function App() {
                                 📄
                             </div>
 
-                            <h2>Select a document</h2>
+                            <h2>
+                                Select a document
+                            </h2>
 
                             <p>
-                                Choose a document from the sidebar
-                                to start editing.
+                                Choose a document from
+                                the sidebar to start
+                                editing.
                             </p>
 
                         </div>
@@ -427,19 +1021,31 @@ function App() {
 
                         <>
 
+                            {/* ========================= */}
                             {/* EDITOR HEADER */}
+                            {/* ========================= */}
+
                             <div className="editor-header">
 
                                 <div className="editor-title-section">
 
                                     <input
                                         className="document-title-input"
-                                        value={title}
-                                        onChange={(event) => {
+                                        value={
+                                            title
+                                        }
+                                        onChange={(
+                                            event
+                                        ) => {
                                             setTitle(
-                                                event.target.value
+                                                event
+                                                    .target
+                                                    .value
                                             );
-                                            setHasUnsavedChanges(true);
+
+                                            setHasUnsavedChanges(
+                                                true
+                                            );
                                         }}
                                         placeholder="Document title"
                                     />
@@ -447,10 +1053,16 @@ function App() {
                                     <div className="editor-status">
 
                                         <span>
-                                            {nodes.length} block
-                                            {nodes.length !== 1
-                                                ? "s"
-                                                : ""}
+                                            {
+                                                nodes.length
+                                            }{" "}
+                                            block
+                                            {
+                                                nodes.length !==
+                                                1
+                                                    ? "s"
+                                                    : ""
+                                            }
                                         </span>
 
                                         <span
@@ -473,22 +1085,30 @@ function App() {
 
                                     <button
                                         className="secondary-button"
-                                        onClick={closeEditor}
+                                        onClick={
+                                            closeEditor
+                                        }
                                     >
                                         Close
                                     </button>
 
                                     <button
                                         className="danger-button"
-                                        onClick={deleteDocument}
+                                        onClick={
+                                            deleteDocument
+                                        }
                                     >
                                         Delete
                                     </button>
 
                                     <button
                                         className="primary-button"
-                                        onClick={saveDocument}
-                                        disabled={loading}
+                                        onClick={
+                                            saveDocument
+                                        }
+                                        disabled={
+                                            loading
+                                        }
                                     >
                                         {loading
                                             ? "Saving..."
@@ -499,14 +1119,21 @@ function App() {
 
                             </div>
 
-                            {/* BLOCK ADD TOOLBAR */}
+                            {/* ========================= */}
+                            {/* BLOCK TOOLBAR */}
+                            {/* ========================= */}
+
                             <div className="block-add-toolbar">
 
-                                <span>Add block:</span>
+                                <span>
+                                    Add block:
+                                </span>
 
                                 <button
                                     onClick={() =>
-                                        addBlock("paragraph")
+                                        addBlock(
+                                            "paragraph"
+                                        )
                                     }
                                 >
                                     + Paragraph
@@ -514,7 +1141,9 @@ function App() {
 
                                 <button
                                     onClick={() =>
-                                        addBlock("heading")
+                                        addBlock(
+                                            "heading"
+                                        )
                                     }
                                 >
                                     + Heading
@@ -522,7 +1151,9 @@ function App() {
 
                                 <button
                                     onClick={() =>
-                                        addBlock("list")
+                                        addBlock(
+                                            "list"
+                                        )
                                     }
                                 >
                                     + List
@@ -530,7 +1161,9 @@ function App() {
 
                                 <button
                                     onClick={() =>
-                                        addBlock("code")
+                                        addBlock(
+                                            "code"
+                                        )
                                     }
                                 >
                                     + Code
@@ -538,16 +1171,21 @@ function App() {
 
                             </div>
 
+                            {/* ========================= */}
                             {/* BLOCKS */}
+                            {/* ========================= */}
+
                             <div className="blocks-container">
 
-                                {nodes.length === 0 ? (
+                                {nodes.length ===
+                                0 ? (
 
                                     <div className="no-blocks">
 
                                         <p>
-                                            This document has no
-                                            blocks yet.
+                                            This document
+                                            has no blocks
+                                            yet.
                                         </p>
 
                                         <button
@@ -566,11 +1204,19 @@ function App() {
                                 ) : (
 
                                     nodes.map(
-                                        (block, index) => (
+                                        (
+                                            block,
+                                            index
+                                        ) => (
+
                                             <Block
-                                                key={`${selectedDocument._id}-${index}`}
-                                                block={block}
-                                                index={index}
+                                                key={`${selectedDocument._id}-${block.id || index}`}
+                                                block={
+                                                    block
+                                                }
+                                                index={
+                                                    index
+                                                }
                                                 onChange={
                                                     updateBlock
                                                 }
@@ -578,6 +1224,7 @@ function App() {
                                                     deleteBlock
                                                 }
                                             />
+
                                         )
                                     )
 
@@ -586,6 +1233,7 @@ function App() {
                             </div>
 
                         </>
+
                     )}
 
                 </section>

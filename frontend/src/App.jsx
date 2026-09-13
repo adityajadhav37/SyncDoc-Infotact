@@ -1,4 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import {
+    useEffect,
+    useRef,
+    useState,
+} from "react";
 import { io } from "socket.io-client";
 import * as Y from "yjs";
 
@@ -17,6 +21,13 @@ import "./App.css";
 const API_URL = "http://localhost:5000/api/documents";
 
 const socket = io("http://localhost:5000");
+
+// Unique identity for this browser session.
+// This will be used for collaboration presence.
+const clientId =
+    `${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 9)}`;
 
 // ========================================
 // CONVERT YJS BLOCKS TO REACT OBJECTS
@@ -46,6 +57,9 @@ function App() {
 
     const [title, setTitle] = useState("");
     const [nodes, setNodes] = useState([]);
+    // Track blocks currently being edited by other collaborators
+const [activeCollaborators, setActiveCollaborators] =
+    useState({});
 
     const [newDocumentTitle, setNewDocumentTitle] =
         useState("");
@@ -191,7 +205,91 @@ function App() {
                 documentId
             );
         };
+        // ----------------------------------------
+        // COLLABORATOR BLOCK FOCUS
+        // ----------------------------------------
+const handleBlockFocused = ({
+    documentId,
+    blockId,
+    clientId: focusedClientId,
+}) => {
+    // Ignore events from other documents
+    if (
+        joinedDocumentId.current !==
+        documentId
+    ) {
+        return;
+    }
 
+    // Ignore our own presence event
+    if (
+        focusedClientId === clientId
+    ) {
+        return;
+    }
+
+    setActiveCollaborators(
+        (current) => ({
+            ...current,
+            [blockId]: focusedClientId,
+        })
+    );
+console.log(
+    "Active collaborators state updated for:",
+    blockId
+);
+    console.log(
+        "Collaborator focused block:",
+        blockId,
+        "Client:",
+        focusedClientId
+    );
+};
+
+        // ----------------------------------------
+        // COLLABORATOR BLOCK BLUR
+        // ----------------------------------------
+const handleBlockBlurred = ({
+    documentId,
+    blockId,
+    clientId: blurredClientId,
+}) => {
+    // Ignore events from other documents
+    if (
+        joinedDocumentId.current !==
+        documentId
+    ) {
+        return;
+    }
+
+    setActiveCollaborators(
+        (current) => {
+            // Only remove the collaborator
+            // who actually left this block.
+            if (
+                current[blockId] !==
+                blurredClientId
+            ) {
+                return current;
+            }
+
+            const updated = {
+                ...current,
+            };
+
+            delete updated[blockId];
+
+            return updated;
+        }
+    );
+
+    console.log(
+        "Collaborator left block:",
+        blockId,
+        "Client:",
+        blurredClientId
+    );
+};
         // ----------------------------------------
         // DOCUMENT ERROR
         // ----------------------------------------
@@ -213,42 +311,59 @@ function App() {
         // ----------------------------------------
 
         socket.on(
-            "document-joined",
-            handleDocumentJoined
-        );
+    "document-joined",
+    handleDocumentJoined
+);
 
-        socket.on(
-            "yjs-update",
-            handleYjsUpdate
-        );
+socket.on(
+    "yjs-update",
+    handleYjsUpdate
+);
 
-        socket.on(
-            "document-error",
-            handleDocumentError
-        );
+socket.on(
+    "block-focused",
+    handleBlockFocused
+);
 
+socket.on(
+    "block-blurred",
+    handleBlockBlurred
+);
+
+socket.on(
+    "document-error",
+    handleDocumentError
+);
         // ----------------------------------------
         // CLEANUP
         // ----------------------------------------
+return () => {
+    socket.off(
+        "document-joined",
+        handleDocumentJoined
+    );
 
-        return () => {
-            socket.off(
-                "document-joined",
-                handleDocumentJoined
-            );
+    socket.off(
+        "yjs-update",
+        handleYjsUpdate
+    );
 
-            socket.off(
-                "yjs-update",
-                handleYjsUpdate
-            );
+    socket.off(
+        "block-focused",
+        handleBlockFocused
+    );
 
-            socket.off(
-                "document-error",
-                handleDocumentError
-            );
-        };
-    }, []);
+    socket.off(
+        "block-blurred",
+        handleBlockBlurred
+    );
 
+    socket.off(
+        "document-error",
+        handleDocumentError
+    );
+};
+}, []);
     // ========================================
     // CREATE DOCUMENT
     // ========================================
@@ -1210,20 +1325,44 @@ function App() {
                                         ) => (
 
                                             <Block
-                                                key={`${selectedDocument._id}-${block.id || index}`}
-                                                block={
-                                                    block
-                                                }
-                                                index={
-                                                    index
-                                                }
-                                                onChange={
-                                                    updateBlock
-                                                }
-                                                onDelete={
-                                                    deleteBlock
-                                                }
-                                            />
+    key={`${selectedDocument._id}-${block.id || index}`}
+    block={block}
+    index={index}
+    onChange={updateBlock}
+    onDelete={deleteBlock}
+    onFocus={(blockIndex, blockId) => {
+        socket.emit("block-focus", {
+            documentId:
+                selectedDocument._id,
+            blockId:
+                blockId || `block-${blockIndex + 1}`,
+            clientId,
+        });
+    }}
+       onBlur={(blockIndex, blockId) => {
+        socket.emit("block-blur", {
+            documentId:
+                selectedDocument._id,
+            blockId:
+                blockId || `block-${blockIndex + 1}`,
+            clientId,
+        });
+    }}
+    isCollaboratorActive={
+        Boolean(
+            activeCollaborators[
+                block.id ||
+                    `block-${index + 1}`
+            ]
+        )
+    }
+    collaboratorId={
+    activeCollaborators[
+        block.id ||
+            `block-${index + 1}`
+    ]
+}
+/>
 
                                         )
                                     )

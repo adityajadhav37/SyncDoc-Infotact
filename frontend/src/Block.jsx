@@ -5,6 +5,10 @@ function Block({
     index,
     onChange,
     onDelete,
+    onFocus,
+    onBlur,
+    isCollaboratorActive,
+    collaboratorId,
 }) {
     const handleChange = (event) => {
         onChange(index, {
@@ -20,6 +24,19 @@ function Block({
         });
     };
 
+ 
+
+    const handleFocus = () => {
+    if (onFocus) {
+        onFocus(index, block.id);
+    }
+};
+
+const handleBlur = () => {
+    if (onBlur) {
+        onBlur(index, block.id);
+    }
+};
     const renderEditor = () => {
         if (block.type === "code") {
             return (
@@ -27,6 +44,8 @@ function Block({
                     className="block-content code-block"
                     value={block.content}
                     onChange={handleChange}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
                     placeholder="Write code..."
                     rows={6}
                 />
@@ -38,8 +57,14 @@ function Block({
                 className={`block-content ${block.type}-block`}
                 value={block.content}
                 onChange={handleChange}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
                 placeholder={`Write ${block.type}...`}
-                rows={block.type === "paragraph" ? 3 : 2}
+                rows={
+                    block.type === "paragraph"
+                        ? 3
+                        : 2
+                }
             />
         );
     };
@@ -52,21 +77,49 @@ function Block({
                     onChange={handleTypeChange}
                     className="block-type"
                 >
-                    <option value="paragraph">Paragraph</option>
-                    <option value="heading">Heading</option>
-                    <option value="list">List</option>
-                    <option value="listItem">List Item</option>
-                    <option value="code">Code</option>
+                    <option value="paragraph">
+                        Paragraph
+                    </option>
+
+                    <option value="heading">
+                        Heading
+                    </option>
+
+                    <option value="list">
+                        List
+                    </option>
+
+                    <option value="listItem">
+                        List Item
+                    </option>
+
+                    <option value="code">
+                        Code
+                    </option>
                 </select>
 
-                <span className="block-number">
-                    Block {index + 1}
-                </span>
+              <span className="block-number">
+    Block {index + 1}
+</span>
 
-                <button
+{isCollaboratorActive && (
+    <span className="collaborator-indicator">
+        ● Collaborator editing
+        {collaboratorId && (
+            <span className="collaborator-id">
+                {" "}
+                ({collaboratorId.slice(-6)})
+            </span>
+        )}
+    </span>
+)}
+
+<button
                     type="button"
                     className="delete-block-button"
-                    onClick={() => onDelete(index)}
+                    onClick={() =>
+                        onDelete(index)
+                    }
                 >
                     Delete
                 </button>

@@ -32,6 +32,7 @@ const io = new Server(server, {
         methods: ["GET", "POST"],
     },
 });
+
 // Track recently processed Yjs updates
 const processedYjsUpdates = new Map();
 
@@ -45,6 +46,7 @@ app.use(
         ],
     })
 );
+
 app.use(express.json());
 
 // Connect to MongoDB
@@ -67,13 +69,20 @@ app.post("/api/documents", async (req, res) => {
     try {
         const { title, nodes } = req.body;
 
-        if (!title || typeof title !== "string" || !title.trim()) {
+        if (
+            !title ||
+            typeof title !== "string" ||
+            !title.trim()
+        ) {
             return res.status(400).json({
                 message: "Document title is required",
             });
         }
 
-        if (nodes !== undefined && !Array.isArray(nodes)) {
+        if (
+            nodes !== undefined &&
+            !Array.isArray(nodes)
+        ) {
             return res.status(400).json({
                 message: "Document nodes must be an array",
             });
@@ -84,7 +93,8 @@ app.post("/api/documents", async (req, res) => {
             nodes: nodes || [],
         });
 
-        const savedDocument = await document.save();
+        const savedDocument =
+            await document.save();
 
         res.status(201).json(savedDocument);
     } catch (error) {
@@ -100,9 +110,10 @@ app.post("/api/documents", async (req, res) => {
 // ================================
 app.get("/api/documents", async (req, res) => {
     try {
-        const documents = await Document.find().sort({
-            createdAt: -1,
-        });
+        const documents =
+            await Document.find().sort({
+                createdAt: -1,
+            });
 
         res.json(documents);
     } catch (error) {
@@ -116,320 +127,496 @@ app.get("/api/documents", async (req, res) => {
 // ================================
 // GET SINGLE DOCUMENT
 // ================================
-app.get("/api/documents/:id", async (req, res) => {
-    try {
-        if (!mongoose.isValidObjectId(req.params.id)) {
-            return res.status(400).json({
-                message: "Invalid document ID",
+app.get(
+    "/api/documents/:id",
+    async (req, res) => {
+        try {
+            if (
+                !mongoose.isValidObjectId(
+                    req.params.id
+                )
+            ) {
+                return res.status(400).json({
+                    message: "Invalid document ID",
+                });
+            }
+
+            const document =
+                await Document.findById(
+                    req.params.id
+                );
+
+            if (!document) {
+                return res.status(404).json({
+                    message: "Document not found",
+                });
+            }
+
+            res.json(document);
+        } catch (error) {
+            res.status(500).json({
+                message: "Failed to fetch document",
+                error: error.message,
             });
         }
-
-        const document = await Document.findById(req.params.id);
-
-        if (!document) {
-            return res.status(404).json({
-                message: "Document not found",
-            });
-        }
-
-        res.json(document);
-    } catch (error) {
-        res.status(500).json({
-            message: "Failed to fetch document",
-            error: error.message,
-        });
     }
-});
+);
 
 // ================================
 // UPDATE DOCUMENT
 // ================================
-app.put("/api/documents/:id", async (req, res) => {
-    try {
-        if (!mongoose.isValidObjectId(req.params.id)) {
-            return res.status(400).json({
-                message: "Invalid document ID",
+app.put(
+    "/api/documents/:id",
+    async (req, res) => {
+        try {
+            if (
+                !mongoose.isValidObjectId(
+                    req.params.id
+                )
+            ) {
+                return res.status(400).json({
+                    message: "Invalid document ID",
+                });
+            }
+
+            const { title, nodes } = req.body;
+
+            if (
+                !title ||
+                typeof title !== "string" ||
+                !title.trim()
+            ) {
+                return res.status(400).json({
+                    message:
+                        "Document title is required",
+                });
+            }
+
+            if (
+                nodes !== undefined &&
+                !Array.isArray(nodes)
+            ) {
+                return res.status(400).json({
+                    message:
+                        "Document nodes must be an array",
+                });
+            }
+
+            const document =
+                await Document.findById(
+                    req.params.id
+                );
+
+            if (!document) {
+                return res.status(404).json({
+                    message:
+                        "Document not found",
+                });
+            }
+
+            document.title = title.trim();
+            document.nodes = nodes || [];
+
+            const updatedDocument =
+                await document.save();
+
+            res.json(updatedDocument);
+        } catch (error) {
+            res.status(400).json({
+                message:
+                    "Failed to update document",
+                error: error.message,
             });
         }
-
-        const { title, nodes } = req.body;
-
-        if (!title || typeof title !== "string" || !title.trim()) {
-            return res.status(400).json({
-                message: "Document title is required",
-            });
-        }
-
-        if (nodes !== undefined && !Array.isArray(nodes)) {
-            return res.status(400).json({
-                message: "Document nodes must be an array",
-            });
-        }
-
-        const document = await Document.findById(req.params.id);
-
-        if (!document) {
-            return res.status(404).json({
-                message: "Document not found",
-            });
-        }
-
-        document.title = title.trim();
-        document.nodes = nodes || [];
-
-        const updatedDocument = await document.save();
-
-        res.json(updatedDocument);
-    } catch (error) {
-        res.status(400).json({
-            message: "Failed to update document",
-            error: error.message,
-        });
     }
-});
+);
 
 // ================================
 // DELETE DOCUMENT
 // ================================
-app.delete("/api/documents/:id", async (req, res) => {
-    try {
-        if (!mongoose.isValidObjectId(req.params.id)) {
-            return res.status(400).json({
-                message: "Invalid document ID",
+app.delete(
+    "/api/documents/:id",
+    async (req, res) => {
+        try {
+            if (
+                !mongoose.isValidObjectId(
+                    req.params.id
+                )
+            ) {
+                return res.status(400).json({
+                    message: "Invalid document ID",
+                });
+            }
+
+            const document =
+                await Document.findByIdAndDelete(
+                    req.params.id
+                );
+
+            if (!document) {
+                return res.status(404).json({
+                    message:
+                        "Document not found",
+                });
+            }
+
+            // Remove in-memory Yjs document
+            // if it exists.
+            removeYDocument(req.params.id);
+
+            res.json({
+                message:
+                    "Document deleted successfully",
+            });
+        } catch (error) {
+            res.status(500).json({
+                message:
+                    "Failed to delete document",
+                error: error.message,
             });
         }
-
-        const document = await Document.findByIdAndDelete(
-            req.params.id
-        );
-
-        if (!document) {
-            return res.status(404).json({
-                message: "Document not found",
-            });
-        }
-
-        // Remove in-memory Yjs document if it exists
-        removeYDocument(req.params.id);
-
-        res.json({
-            message: "Document deleted successfully",
-        });
-    } catch (error) {
-        res.status(500).json({
-            message: "Failed to delete document",
-            error: error.message,
-        });
     }
-});
+);
 
 // ================================
 // SOCKET.IO CONNECTION
 // ================================
 io.on("connection", (socket) => {
-    console.log(`Socket connected: ${socket.id}`);
+    console.log(
+        `Socket connected: ${socket.id}`
+    );
 
     // ================================
     // JOIN DOCUMENT
     // ================================
-    socket.on("join-document", async (documentId) => {
-        try {
-            if (!documentId) {
-                return;
-            }
-
-            if (!mongoose.isValidObjectId(documentId)) {
-                socket.emit("document-error", {
-                    message: "Invalid document ID",
-                });
-
-                return;
-            }
-
-            const document = await Document.findById(
-                documentId
-            ).lean();
-
-            if (!document) {
-                socket.emit("document-error", {
-                    message: "Document not found",
-                });
-
-                return;
-            }
-
-            // Initialize or retrieve the server-side Yjs document
-            const ydoc = initializeYDocument(
-                documentId,
-                document
-            );
-
-            const documentMap =
-                ydoc.getMap("document");
-
-            const blocksArray =
-                ydoc.getArray("blocks");
-
-            // Join Socket.io room
-            socket.join(
-                `document:${documentId}`
-            );
-
-            console.log(
-                `Socket ${socket.id} joined document ${documentId}`
-            );
-
-            // Convert Yjs blocks to normal JSON
-            const nodes = blocksArray
-                .toArray()
-                .map((block) => ({
-                    id: block.get("id"),
-                    type:
-                        block.get("type") ||
-                        "paragraph",
-                    content:
-                        block.get("content") ||
-                        "",
-                    children: JSON.parse(
-                        block.get("children") ||
-                            "[]"
-                    ),
-                }));
-
-            // Send current collaborative state
-            socket.emit("document-joined", {
-                documentId,
-
-                title:
-                    documentMap.get("title") ||
-                    document.title,
-
-                nodes,
-
-                yjsState: Array.from(
-                    Y.encodeStateAsUpdate(
-                        ydoc
-                    )
-                ),
-            });
-
-            console.log(
-                `Initial Yjs state sent to ${socket.id}`
-            );
-        } catch (error) {
-            console.error(
-                "Failed to join collaborative document:",
-                error.message
-            );
-
-            socket.emit("document-error", {
-                message:
-                    "Failed to join document",
-            });
-        }
-    });
-
-    // ================================
-    // LEAVE DOCUMENT
-    // ================================
     socket.on(
-    "yjs-update",
-    ({ documentId, update }) => {
-        try {
-            if (
-                !documentId ||
-                !update
-            ) {
-                return;
-            }
+        "join-document",
+        async (documentId) => {
+            try {
+                if (!documentId) {
+                    return;
+                }
 
-            if (
-                !mongoose.isValidObjectId(
-                    documentId
-                )
-            ) {
-                return;
-            }
+                if (
+                    !mongoose.isValidObjectId(
+                        documentId
+                    )
+                ) {
+                    socket.emit(
+                        "document-error",
+                        {
+                            message:
+                                "Invalid document ID",
+                        }
+                    );
 
-            const updateArray =
-                new Uint8Array(update);
+                    return;
+                }
 
-            // Create a simple fingerprint for
-            // this Yjs update.
-            const updateKey =
-                `${documentId}:${Array.from(
-                    updateArray
-                ).join(",")}`;
+                const document =
+                    await Document.findById(
+                        documentId
+                    ).lean();
 
-            // Ignore an update that has already
-            // been processed.
-            if (
-                processedYjsUpdates.has(
-                    updateKey
-                )
-            ) {
-                console.log(
-                    `Duplicate Yjs update ignored for document ${documentId}`
-                );
+                if (!document) {
+                    socket.emit(
+                        "document-error",
+                        {
+                            message:
+                                "Document not found",
+                        }
+                    );
 
-                return;
-            }
+                    return;
+                }
 
-            // Remember this update.
-            processedYjsUpdates.set(
-                updateKey,
-                Date.now()
-            );
+                // Initialize or retrieve the
+                // server-side Yjs document.
+                const ydoc =
+                    initializeYDocument(
+                        documentId,
+                        document
+                    );
 
-            // Keep the memory map small.
-            // Remove entries older than 60 seconds.
-            setTimeout(() => {
-                processedYjsUpdates.delete(
-                    updateKey
-                );
-            }, 60000);
+                const documentMap =
+                    ydoc.getMap(
+                        "document"
+                    );
 
-            // Get the authoritative server-side
-            // Yjs document.
-            const ydoc =
-                getYDocument(
-                    documentId
-                );
+                const blocksArray =
+                    ydoc.getArray("blocks");
 
-            // Apply the update to the server.
-            Y.applyUpdate(
-                ydoc,
-                updateArray,
-                "server"
-            );
-
-            // Send the update only to the
-            // other clients in the room.
-            socket
-                .to(
+                // Join Socket.io room.
+                socket.join(
                     `document:${documentId}`
-                )
-                .emit(
-                    "yjs-update",
+                );
+
+                console.log(
+                    `Socket ${socket.id} joined document ${documentId}`
+                );
+
+                // Convert Yjs blocks to normal JSON.
+                const nodes =
+                    blocksArray
+                        .toArray()
+                        .map(
+                            (block) => ({
+                                id: block.get(
+                                    "id"
+                                ),
+
+                                type:
+                                    block.get(
+                                        "type"
+                                    ) ||
+                                    "paragraph",
+
+                                content:
+                                    block.get(
+                                        "content"
+                                    ) || "",
+
+                                children:
+                                    JSON.parse(
+                                        block.get(
+                                            "children"
+                                        ) || "[]"
+                                    ),
+                            })
+                        );
+
+                // Send current collaborative state.
+                socket.emit(
+                    "document-joined",
                     {
                         documentId,
-                        update: Array.from(
-                            updateArray
-                        ),
+
+                        title:
+                            documentMap.get(
+                                "title"
+                            ) ||
+                            document.title,
+
+                        nodes,
+
+                        yjsState:
+                            Array.from(
+                                Y.encodeStateAsUpdate(
+                                    ydoc
+                                )
+                            ),
                     }
                 );
 
-            console.log(
-                `Yjs update applied and broadcast for document ${documentId}`
+                console.log(
+                    `Initial Yjs state sent to ${socket.id}`
+                );
+            } catch (error) {
+                console.error(
+                    "Failed to join collaborative document:",
+                    error.message
+                );
+
+                socket.emit(
+                    "document-error",
+                    {
+                        message:
+                            "Failed to join document",
+                    }
+                );
+            }
+        }
+    );
+
+    // ================================
+    // BLOCK FOCUS
+    // ================================
+    socket.on(
+        "block-focus",
+        ({
+            documentId,
+            blockId,
+            clientId,
+        }) => {
+            if (
+                !documentId ||
+                !blockId ||
+                !clientId
+            ) {
+                return;
+            }
+
+            const room =
+                `document:${documentId}`;
+
+            socket.join(room);
+
+            socket.data.activeBlock = {
+                documentId,
+                blockId,
+                clientId,
+            };
+
+            // Tell other users that this block
+            // is active.
+            socket.to(room).emit(
+                "block-focused",
+                {
+                    documentId,
+                    blockId,
+                    clientId,
+                }
             );
-        } catch (error) {
-            console.error(
-                "Failed to process Yjs update:",
-                error.message
+
+            console.log(
+                `Client ${clientId} focused block ${blockId}`
             );
         }
-    }
-);
+    );
+
+    // ================================
+    // BLOCK BLUR
+    // ================================
+    socket.on(
+        "block-blur",
+        ({
+            documentId,
+            blockId,
+            clientId,
+        }) => {
+            if (
+                !documentId ||
+                !blockId ||
+                !clientId
+            ) {
+                return;
+            }
+
+            const room =
+                `document:${documentId}`;
+
+            socket.data.activeBlock = null;
+
+            // Tell other users that this block
+            // is no longer active.
+            socket.to(room).emit(
+                "block-blurred",
+                {
+                    documentId,
+                    blockId,
+                    clientId,
+                }
+            );
+
+            console.log(
+                `Client ${clientId} left block ${blockId}`
+            );
+        }
+    );
+
+    // ================================
+    // YJS UPDATE
+    // ================================
+    socket.on(
+        "yjs-update",
+        ({ documentId, update }) => {
+            try {
+                if (
+                    !documentId ||
+                    !update
+                ) {
+                    return;
+                }
+
+                if (
+                    !mongoose.isValidObjectId(
+                        documentId
+                    )
+                ) {
+                    return;
+                }
+
+                const updateArray =
+                    new Uint8Array(update);
+
+                // Create a simple fingerprint
+                // for this Yjs update.
+                const updateKey =
+                    `${documentId}:${Array.from(
+                        updateArray
+                    ).join(",")}`;
+
+                // Ignore an update that has
+                // already been processed.
+                if (
+                    processedYjsUpdates.has(
+                        updateKey
+                    )
+                ) {
+                    console.log(
+                        `Duplicate Yjs update ignored for document ${documentId}`
+                    );
+
+                    return;
+                }
+
+                // Remember this update.
+                processedYjsUpdates.set(
+                    updateKey,
+                    Date.now()
+                );
+
+                // Remove the entry after 60 seconds
+                // to keep the memory map small.
+                setTimeout(() => {
+                    processedYjsUpdates.delete(
+                        updateKey
+                    );
+                }, 60000);
+
+                // Get the authoritative
+                // server-side Yjs document.
+                const ydoc =
+                    getYDocument(
+                        documentId
+                    );
+
+                // Apply the update to the server.
+                Y.applyUpdate(
+                    ydoc,
+                    updateArray,
+                    "server"
+                );
+
+                // Send the update only to the
+                // other clients in the room.
+                socket
+                    .to(
+                        `document:${documentId}`
+                    )
+                    .emit(
+                        "yjs-update",
+                        {
+                            documentId,
+
+                            update:
+                                Array.from(
+                                    updateArray
+                                ),
+                        }
+                    );
+
+                console.log(
+                    `Yjs update applied and broadcast for document ${documentId}`
+                );
+            } catch (error) {
+                console.error(
+                    "Failed to process Yjs update:",
+                    error.message
+                );
+            }
+        }
+    );
 
     // ================================
     // DISCONNECT
@@ -437,20 +624,51 @@ io.on("connection", (socket) => {
     socket.on(
         "disconnect",
         () => {
+            // Notify other collaborators if
+            // this user was editing a block
+            // when they disconnected.
+            if (socket.data.activeBlock) {
+                const {
+                    documentId,
+                    blockId,
+                    clientId,
+                } =
+                    socket.data.activeBlock;
+
+                const room =
+                    `document:${documentId}`;
+
+                socket.to(room).emit(
+                    "block-blurred",
+                    {
+                        documentId,
+                        blockId,
+                        clientId,
+                    }
+                );
+
+                console.log(
+                    `Disconnected client ${clientId} left block ${blockId}`
+                );
+            }
+
             console.log(
                 `Socket disconnected: ${socket.id}`
             );
         }
     );
-});
+}); // IMPORTANT: closes io.on("connection")
 
 // ================================
 // START SERVER
 // ================================
 const PORT = 5000;
 
-server.listen(PORT, () => {
-    console.log(
-        `SyncDoc server running on http://localhost:${PORT}`
-    );
-});
+server.listen(
+    PORT,
+    () => {
+        console.log(
+            `SyncDoc server running on http://localhost:${PORT}`
+        );
+    }
+);

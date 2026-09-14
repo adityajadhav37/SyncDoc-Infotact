@@ -513,7 +513,50 @@ io.on("connection", (socket) => {
             );
         }
     );
+    // ========================================
+    // LEAVE DOCUMENT
+    // ========================================
+    socket.on(
+        "leave-document",
+        (documentId) => {
+            if (!documentId) {
+                return;
+            }
 
+            const room =
+                `document:${documentId}`;
+
+            // Notify other users if this client
+            // was actively editing a block.
+            if (
+                socket.data.activeBlock &&
+                socket.data.activeBlock.documentId ===
+                    documentId
+            ) {
+                const {
+                    blockId,
+                    clientId,
+                } = socket.data.activeBlock;
+
+                socket.to(room).emit(
+                    "block-blurred",
+                    {
+                        documentId,
+                        blockId,
+                        clientId,
+                    }
+                );
+
+                socket.data.activeBlock = null;
+            }
+
+            socket.leave(room);
+
+            console.log(
+                `Client left document ${documentId}`
+            );
+        }
+    );
     // ================================
     // YJS UPDATE
     // ================================

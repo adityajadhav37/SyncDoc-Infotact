@@ -1180,6 +1180,10 @@ return () => {
                                             }
                                         </span>
 
+                                        <span className="collaborator-count">
+                                          ● {Object.keys(activeCollaborators).length} active
+                                        </span>
+                                        
                                         <span
                                             className={
                                                 hasUnsavedChanges

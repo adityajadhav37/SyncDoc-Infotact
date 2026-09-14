@@ -24,19 +24,31 @@ function Block({
         });
     };
 
- 
-
     const handleFocus = () => {
-    if (onFocus) {
-        onFocus(index, block.id);
-    }
-};
+        if (onFocus) {
+            onFocus(index, block.id);
+        }
+    };
 
-const handleBlur = () => {
-    if (onBlur) {
-        onBlur(index, block.id);
-    }
-};
+    const handleBlur = (event) => {
+        const nextFocusedElement =
+            event.relatedTarget;
+
+        // Keep the collaborator active when
+        // focus moves inside the same block.
+        if (
+            nextFocusedElement &&
+            nextFocusedElement.closest(".editor-block") ===
+                event.currentTarget.closest(".editor-block")
+        ) {
+            return;
+        }
+
+        if (onBlur) {
+            onBlur(index, block.id);
+        }
+    };
+
     const renderEditor = () => {
         if (block.type === "code") {
             return (
@@ -98,23 +110,23 @@ const handleBlur = () => {
                     </option>
                 </select>
 
-              <span className="block-number">
-    Block {index + 1}
-</span>
+                <span className="block-number">
+                    Block {index + 1}
+                </span>
 
-{isCollaboratorActive && (
-    <span className="collaborator-indicator">
-        ● Collaborator editing
-        {collaboratorId && (
-            <span className="collaborator-id">
-                {" "}
-                ({collaboratorId.slice(-6)})
-            </span>
-        )}
-    </span>
-)}
+                {isCollaboratorActive && (
+                    <span className="collaborator-indicator">
+                        ● Collaborator editing
+                        {collaboratorId && (
+                            <span className="collaborator-id">
+                                {" "}
+                                ({collaboratorId.slice(-6)})
+                            </span>
+                        )}
+                    </span>
+                )}
 
-<button
+                <button
                     type="button"
                     className="delete-block-button"
                     onClick={() =>

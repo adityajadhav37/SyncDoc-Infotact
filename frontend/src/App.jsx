@@ -60,7 +60,8 @@ function App() {
     // Track blocks currently being edited by other collaborators
 const [activeCollaborators, setActiveCollaborators] =
     useState({});
-
+const [connectedUsers, setConnectedUsers] =
+    useState({});
     const [newDocumentTitle, setNewDocumentTitle] =
         useState("");
 
@@ -305,12 +306,11 @@ const handleBlockBlurred = ({
                     "Collaborative document error."
             );
         };
+// ----------------------------------------
+// REGISTER SOCKET LISTENERS
+// ----------------------------------------
 
-        // ----------------------------------------
-        // REGISTER SOCKET LISTENERS
-        // ----------------------------------------
-
-        socket.on(
+socket.on(
     "document-joined",
     handleDocumentJoined
 );
@@ -326,6 +326,81 @@ socket.on(
 );
 
 socket.on(
+    "document-users",
+    ({ documentId, clientIds }) => {
+        if (
+            documentId !== joinedDocumentId.current
+        ) {
+            return;
+        }
+
+        setConnectedUsers(() => {
+            const users = {};
+
+            clientIds.forEach((existingClientId) => {
+                users[existingClientId] = true;
+            });
+
+            return users;
+        });
+
+        console.log(
+            `Initial document users received: ${clientIds.length}`
+        );
+    }
+);
+
+socket.on(
+    "user-joined-document",
+    ({ documentId, clientId: joinedClientId }) => {
+        if (
+            documentId !== joinedDocumentId.current ||
+            joinedClientId === clientId
+        ) {
+            return;
+        }
+
+        setConnectedUsers(
+            (current) => ({
+                ...current,
+                [joinedClientId]: true,
+            })
+        );
+
+        console.log(
+            `User ${joinedClientId} joined the document`
+        );
+    }
+);
+
+socket.on(
+    "user-left-document",
+    ({ documentId, clientId: leftClientId }) => {
+        if (
+            documentId !== joinedDocumentId.current
+        ) {
+            return;
+        }
+
+        setConnectedUsers(
+            (current) => {
+                const updated = {
+                    ...current,
+                };
+
+                delete updated[leftClientId];
+
+                return updated;
+            }
+        );
+
+        console.log(
+            `User ${leftClientId} left the document`
+        );
+    }
+);
+
+socket.on(
     "block-blurred",
     handleBlockBlurred
 );
@@ -334,9 +409,10 @@ socket.on(
     "document-error",
     handleDocumentError
 );
-        // ----------------------------------------
-        // CLEANUP
-        // ----------------------------------------
+// ----------------------------------------
+// CLEANUP
+// ----------------------------------------
+
 return () => {
     socket.off(
         "document-joined",
@@ -562,17 +638,18 @@ return () => {
         // ----------------------------------------
         // JOIN SOCKET.IO ROOM
         // ----------------------------------------
-
         socket.emit(
             "join-document",
-            document._id
+            {
+                documentId: document._id,
+                clientId,
+            }
         );
     };
 
     // ========================================
     // CLOSE EDITOR
     // ========================================
-
     const closeEditor = () => {
         if (selectedDocument) {
             socket.emit(
@@ -1180,9 +1257,9 @@ return () => {
                                             }
                                         </span>
 
-                                        <span className="collaborator-count">
-                                          ● {Object.keys(activeCollaborators).length} active
-                                        </span>
+                                       <span className="collaborator-count">
+    ● {Object.keys(connectedUsers).length + 1} users online
+</span>
                                         
                                         <span
                                             className={
@@ -1383,7 +1460,7 @@ return () => {
 
             </main>
 
-        </div>
+                    </div>
     );
 }
 

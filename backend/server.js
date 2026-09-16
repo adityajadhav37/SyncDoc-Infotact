@@ -291,11 +291,14 @@ io.on("connection", (socket) => {
     // ================================
     socket.on(
         "join-document",
-        async (documentId) => {
+        async ({ documentId, clientId }) => {
             try {
                 if (!documentId) {
                     return;
                 }
+
+                socket.data.clientId = clientId;
+                socket.data.documentId = documentId;
 
                 if (
                     !mongoose.isValidObjectId(
@@ -347,12 +350,65 @@ io.on("connection", (socket) => {
                     ydoc.getArray("blocks");
 
                 // Join Socket.io room.
-                socket.join(
-                    `document:${documentId}`
-                );
+                const room =
+                    `document:${documentId}`;
+
+                socket.join(room);
 
                 console.log(
                     `Socket ${socket.id} joined document ${documentId}`
+                );
+
+                // ================================
+                // INITIAL USER PRESENCE
+                // ================================
+                // Get all sockets currently inside
+                // this document room.
+                const roomSockets =
+                    await io
+                        .in(room)
+                        .fetchSockets();
+
+                // Collect the client IDs of users
+                // who were already in the document.
+                const existingUsers =
+                    roomSockets
+                        .map(
+                            (connectedSocket) =>
+                                connectedSocket
+                                    .data
+                                    .clientId
+                        )
+                        .filter(
+                            (existingClientId) =>
+                                existingClientId &&
+                                existingClientId !==
+                                    clientId
+                        );
+
+                // Send the existing users to the
+                // newly joined client.
+                socket.emit(
+                    "document-users",
+                    {
+                        documentId,
+                        clientIds:
+                            existingUsers,
+                    }
+                );
+
+                console.log(
+                    `Initial presence sent to ${socket.id}: ${existingUsers.length} existing user(s)`
+                );
+
+                // Notify existing users that
+                // a new collaborator joined.
+                socket.to(room).emit(
+                    "user-joined-document",
+                    {
+                        documentId,
+                        clientId,
+                    }
                 );
 
                 // Convert Yjs blocks to normal JSON.
@@ -513,9 +569,10 @@ io.on("connection", (socket) => {
             );
         }
     );
-    // ========================================
+
+    // ================================
     // LEAVE DOCUMENT
-    // ========================================
+    // ================================
     socket.on(
         "leave-document",
         (documentId) => {
@@ -550,13 +607,35 @@ io.on("connection", (socket) => {
                 socket.data.activeBlock = null;
             }
 
+            // Notify other users that this client
+            // has left the document.
+            if (socket.data.clientId) {
+                socket.to(room).emit(
+                    "user-left-document",
+                    {
+                        documentId,
+                        clientId:
+                            socket.data.clientId,
+                    }
+                );
+            }
+
             socket.leave(room);
+
+            // Clear document tracking.
+            if (
+                socket.data.documentId ===
+                documentId
+            ) {
+                socket.data.documentId = null;
+            }
 
             console.log(
                 `Client left document ${documentId}`
             );
         }
     );
+
     // ================================
     // YJS UPDATE
     // ================================
@@ -667,6 +746,26 @@ io.on("connection", (socket) => {
     socket.on(
         "disconnect",
         () => {
+            // Notify other collaborators that
+            // this user left the current document.
+            if (
+                socket.data.documentId &&
+                socket.data.clientId
+            ) {
+                const room =
+                    `document:${socket.data.documentId}`;
+
+                socket.to(room).emit(
+                    "user-left-document",
+                    {
+                        documentId:
+                            socket.data.documentId,
+                        clientId:
+                            socket.data.clientId,
+                    }
+                );
+            }
+
             // Notify other collaborators if
             // this user was editing a block
             // when they disconnected.
@@ -675,8 +774,7 @@ io.on("connection", (socket) => {
                     documentId,
                     blockId,
                     clientId,
-                } =
-                    socket.data.activeBlock;
+                } = socket.data.activeBlock;
 
                 const room =
                     `document:${documentId}`;
@@ -700,7 +798,7 @@ io.on("connection", (socket) => {
             );
         }
     );
-}); // IMPORTANT: closes io.on("connection")
+});
 
 // ================================
 // START SERVER

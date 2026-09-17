@@ -110,226 +110,204 @@ const [connectedUsers, setConnectedUsers] =
         fetchDocuments();
     }, []);
 
-    // ========================================
-    // SOCKET.IO + YJS COLLABORATION
-    // ========================================
+   // ========================================
+// SOCKET.IO + YJS COLLABORATION
+// ========================================
 
-    useEffect(() => {
-        // ----------------------------------------
-        // DOCUMENT JOINED
-        // ----------------------------------------
+useEffect(() => {
+    // ----------------------------------------
+    // DOCUMENT JOINED
+    // ----------------------------------------
 
-        const handleDocumentJoined = (data) => {
-            console.log(
-                "Collaborative document joined:",
-                data
+    const handleDocumentJoined = (data) => {
+        console.log(
+            "Collaborative document joined:",
+            data
+        );
+
+        const ydoc = getYDocument(
+            data.documentId
+        );
+
+        // Apply the initial server Yjs state.
+        if (data.yjsState) {
+            applyRemoteUpdate(
+                data.documentId,
+                data.yjsState
             );
+        }
 
-            const ydoc = getYDocument(
-                data.documentId
-            );
+        const updatedNodes =
+            getNodesFromYDoc(ydoc);
 
-            // Apply the initial server Yjs state.
-            // applyRemoteUpdate() protects this update
-            // from being sent back to the server.
-            if (data.yjsState) {
-                applyRemoteUpdate(
-                    data.documentId,
-                    data.yjsState
+        setNodes(updatedNodes);
+
+        setTitle(
+            data.title || ""
+        );
+
+        setHasUnsavedChanges(false);
+
+        console.log(
+            "Initial Yjs state applied:",
+            data.documentId
+        );
+    };
+
+    // ----------------------------------------
+    // RECEIVE YJS UPDATE
+    // ----------------------------------------
+
+    const handleYjsUpdate = ({
+        documentId,
+        update,
+    }) => {
+        if (!documentId || !update) {
+            return;
+        }
+
+        console.log(
+            "Received Yjs update:",
+            documentId
+        );
+
+        applyRemoteUpdate(
+            documentId,
+            update
+        );
+
+        if (
+            joinedDocumentId.current ===
+            documentId
+        ) {
+            const ydoc =
+                getYDocument(
+                    documentId
                 );
-            }
 
             const updatedNodes =
-                getNodesFromYDoc(ydoc);
+                getNodesFromYDoc(
+                    ydoc
+                );
 
             setNodes(updatedNodes);
 
-            setTitle(
-                data.title || ""
-            );
-
-            setHasUnsavedChanges(false);
-
-            console.log(
-                "Initial Yjs state applied:",
-                data.documentId
-            );
-        };
-
-        // ----------------------------------------
-        // RECEIVE YJS UPDATE
-        // ----------------------------------------
-
-        const handleYjsUpdate = ({
-            documentId,
-            update,
-        }) => {
-            if (!documentId || !update) {
-                return;
-            }
-
-            console.log(
-                "Received Yjs update:",
-                documentId
-            );
-
-            // Apply the remote update through the
-            // collaboration manager.
-            applyRemoteUpdate(
-                documentId,
-                update
-            );
-
-            // Update React state only if this is
-            // the document currently being edited.
-            if (
-                joinedDocumentId.current ===
-                documentId
-            ) {
-                const ydoc =
-                    getYDocument(
-                        documentId
-                    );
-
-                const updatedNodes =
-                    getNodesFromYDoc(
-                        ydoc
-                    );
-
-                setNodes(updatedNodes);
-
-                setHasUnsavedChanges(true);
-            }
-
-            console.log(
-                "Remote Yjs update applied:",
-                documentId
-            );
-        };
-        // ----------------------------------------
-        // COLLABORATOR BLOCK FOCUS
-        // ----------------------------------------
-const handleBlockFocused = ({
-    documentId,
-    blockId,
-    clientId: focusedClientId,
-}) => {
-    // Ignore events from other documents
-    if (
-        joinedDocumentId.current !==
-        documentId
-    ) {
-        return;
-    }
-
-    // Ignore our own presence event
-    if (
-        focusedClientId === clientId
-    ) {
-        return;
-    }
-
-    setActiveCollaborators(
-        (current) => ({
-            ...current,
-            [blockId]: focusedClientId,
-        })
-    );
-console.log(
-    "Active collaborators state updated for:",
-    blockId
-);
-    console.log(
-        "Collaborator focused block:",
-        blockId,
-        "Client:",
-        focusedClientId
-    );
-};
-
-        // ----------------------------------------
-        // COLLABORATOR BLOCK BLUR
-        // ----------------------------------------
-const handleBlockBlurred = ({
-    documentId,
-    blockId,
-    clientId: blurredClientId,
-}) => {
-    // Ignore events from other documents
-    if (
-        joinedDocumentId.current !==
-        documentId
-    ) {
-        return;
-    }
-
-    setActiveCollaborators(
-        (current) => {
-            // Only remove the collaborator
-            // who actually left this block.
-            if (
-                current[blockId] !==
-                blurredClientId
-            ) {
-                return current;
-            }
-
-            const updated = {
-                ...current,
-            };
-
-            delete updated[blockId];
-
-            return updated;
+            setHasUnsavedChanges(true);
         }
-    );
 
-    console.log(
-        "Collaborator left block:",
+        console.log(
+            "Remote Yjs update applied:",
+            documentId
+        );
+    };
+
+    // ----------------------------------------
+    // COLLABORATOR BLOCK FOCUS
+    // ----------------------------------------
+
+    const handleBlockFocused = ({
+        documentId,
         blockId,
-        "Client:",
-        blurredClientId
-    );
-};
-        // ----------------------------------------
-        // DOCUMENT ERROR
-        // ----------------------------------------
-
-        const handleDocumentError = (data) => {
-            console.error(
-                "Document error:",
-                data
-            );
-
-            setMessage(
-                data?.message ||
-                    "Collaborative document error."
-            );
-        };
-// ----------------------------------------
-// REGISTER SOCKET LISTENERS
-// ----------------------------------------
-
-socket.on(
-    "document-joined",
-    handleDocumentJoined
-);
-
-socket.on(
-    "yjs-update",
-    handleYjsUpdate
-);
-
-socket.on(
-    "block-focused",
-    handleBlockFocused
-);
-
-socket.on(
-    "document-users",
-    ({ documentId, clientIds }) => {
+        clientId: focusedClientId,
+    }) => {
         if (
-            documentId !== joinedDocumentId.current
+            joinedDocumentId.current !==
+            documentId
+        ) {
+            return;
+        }
+
+        if (
+            focusedClientId === clientId
+        ) {
+            return;
+        }
+
+        setActiveCollaborators(
+            (current) => ({
+                ...current,
+                [blockId]: focusedClientId,
+            })
+        );
+
+        console.log(
+            "Collaborator focused block:",
+            blockId,
+            "Client:",
+            focusedClientId
+        );
+    };
+
+    // ----------------------------------------
+    // COLLABORATOR BLOCK BLUR
+    // ----------------------------------------
+
+    const handleBlockBlurred = ({
+        documentId,
+        blockId,
+        clientId: blurredClientId,
+    }) => {
+        if (
+            joinedDocumentId.current !==
+            documentId
+        ) {
+            return;
+        }
+
+        setActiveCollaborators(
+            (current) => {
+                if (
+                    current[blockId] !==
+                    blurredClientId
+                ) {
+                    return current;
+                }
+
+                const updated = {
+                    ...current,
+                };
+
+                delete updated[blockId];
+
+                return updated;
+            }
+        );
+
+        console.log(
+            "Collaborator left block:",
+            blockId,
+            "Client:",
+            blurredClientId
+        );
+    };
+
+    // ----------------------------------------
+    // DOCUMENT ERROR
+    // ----------------------------------------
+
+    const handleDocumentError = (data) => {
+        console.error(
+            "Document error:",
+            data
+        );
+
+        setMessage(
+            data?.message ||
+                "Collaborative document error."
+        );
+    };
+
+    // ----------------------------------------
+    // INITIAL DOCUMENT USERS
+    // ----------------------------------------
+
+    const handleDocumentUsers = ({
+        documentId,
+        clientIds,
+    }) => {
+        if (
+            documentId !==
+            joinedDocumentId.current
         ) {
             return;
         }
@@ -337,9 +315,11 @@ socket.on(
         setConnectedUsers(() => {
             const users = {};
 
-            clientIds.forEach((existingClientId) => {
-                users[existingClientId] = true;
-            });
+            clientIds.forEach(
+                (existingClientId) => {
+                    users[existingClientId] = true;
+                }
+            );
 
             return users;
         });
@@ -347,14 +327,19 @@ socket.on(
         console.log(
             `Initial document users received: ${clientIds.length}`
         );
-    }
-);
+    };
 
-socket.on(
-    "user-joined-document",
-    ({ documentId, clientId: joinedClientId }) => {
+    // ----------------------------------------
+    // USER JOINED DOCUMENT
+    // ----------------------------------------
+
+    const handleUserJoinedDocument = ({
+        documentId,
+        clientId: joinedClientId,
+    }) => {
         if (
-            documentId !== joinedDocumentId.current ||
+            documentId !==
+                joinedDocumentId.current ||
             joinedClientId === clientId
         ) {
             return;
@@ -370,14 +355,19 @@ socket.on(
         console.log(
             `User ${joinedClientId} joined the document`
         );
-    }
-);
+    };
 
-socket.on(
-    "user-left-document",
-    ({ documentId, clientId: leftClientId }) => {
+    // ----------------------------------------
+    // USER LEFT DOCUMENT
+    // ----------------------------------------
+
+    const handleUserLeftDocument = ({
+        documentId,
+        clientId: leftClientId,
+    }) => {
         if (
-            documentId !== joinedDocumentId.current
+            documentId !==
+            joinedDocumentId.current
         ) {
             return;
         }
@@ -397,48 +387,97 @@ socket.on(
         console.log(
             `User ${leftClientId} left the document`
         );
-    }
-);
+    };
 
-socket.on(
-    "block-blurred",
-    handleBlockBlurred
-);
+    // ----------------------------------------
+    // REGISTER SOCKET LISTENERS
+    // ----------------------------------------
 
-socket.on(
-    "document-error",
-    handleDocumentError
-);
-// ----------------------------------------
-// CLEANUP
-// ----------------------------------------
-
-return () => {
-    socket.off(
+    socket.on(
         "document-joined",
         handleDocumentJoined
     );
 
-    socket.off(
+    socket.on(
         "yjs-update",
         handleYjsUpdate
     );
 
-    socket.off(
+    socket.on(
         "block-focused",
         handleBlockFocused
     );
 
-    socket.off(
+    socket.on(
         "block-blurred",
         handleBlockBlurred
     );
 
-    socket.off(
+    socket.on(
+        "document-users",
+        handleDocumentUsers
+    );
+
+    socket.on(
+        "user-joined-document",
+        handleUserJoinedDocument
+    );
+
+    socket.on(
+        "user-left-document",
+        handleUserLeftDocument
+    );
+
+    socket.on(
         "document-error",
         handleDocumentError
     );
-};
+
+    // ----------------------------------------
+    // CLEANUP
+    // ----------------------------------------
+
+    return () => {
+        socket.off(
+            "document-joined",
+            handleDocumentJoined
+        );
+
+        socket.off(
+            "yjs-update",
+            handleYjsUpdate
+        );
+
+        socket.off(
+            "block-focused",
+            handleBlockFocused
+        );
+
+        socket.off(
+            "block-blurred",
+            handleBlockBlurred
+        );
+
+        socket.off(
+            "document-users",
+            handleDocumentUsers
+        );
+
+        socket.off(
+            "user-joined-document",
+            handleUserJoinedDocument
+        );
+
+        socket.off(
+            "user-left-document",
+            handleUserLeftDocument
+        );
+
+        socket.off(
+            "document-error",
+            handleDocumentError
+        );
+    };
 }, []);
     // ========================================
     // CREATE DOCUMENT

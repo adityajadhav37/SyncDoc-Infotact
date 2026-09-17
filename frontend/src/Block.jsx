@@ -24,30 +24,43 @@ function Block({
         });
     };
 
+    // ----------------------------------------
+    // BLOCK FOCUS
+    // ----------------------------------------
+
     const handleFocus = () => {
+        console.log(
+            "Block focused:",
+            block.id,
+            "Index:",
+            index
+        );
+
         if (onFocus) {
             onFocus(index, block.id);
         }
     };
 
-    const handleBlur = (event) => {
-        const nextFocusedElement =
-            event.relatedTarget;
+    // ----------------------------------------
+    // BLOCK BLUR
+    // ----------------------------------------
 
-        // Keep the collaborator active when
-        // focus moves inside the same block.
-        if (
-            nextFocusedElement &&
-            nextFocusedElement.closest(".editor-block") ===
-                event.currentTarget.closest(".editor-block")
-        ) {
-            return;
-        }
+    const handleBlur = () => {
+        console.log(
+            "Block blurred:",
+            block.id,
+            "Index:",
+            index
+        );
 
         if (onBlur) {
             onBlur(index, block.id);
         }
     };
+
+    // ----------------------------------------
+    // RENDER EDITOR
+    // ----------------------------------------
 
     const renderEditor = () => {
         if (block.type === "code") {
@@ -81,9 +94,15 @@ function Block({
         );
     };
 
+    // ----------------------------------------
+    // BLOCK UI
+    // ----------------------------------------
+
     return (
         <div className="editor-block">
+
             <div className="block-toolbar">
+
                 <select
                     value={block.type}
                     onChange={handleTypeChange}
@@ -117,10 +136,13 @@ function Block({
                 {isCollaboratorActive && (
                     <span className="collaborator-indicator">
                         ● Collaborator editing
+
                         {collaboratorId && (
                             <span className="collaborator-id">
                                 {" "}
-                                ({collaboratorId.slice(-6)})
+                                (
+                                {collaboratorId.slice(-6)}
+                                )
                             </span>
                         )}
                     </span>
@@ -135,9 +157,11 @@ function Block({
                 >
                     Delete
                 </button>
+
             </div>
 
             {renderEditor()}
+
         </div>
     );
 }

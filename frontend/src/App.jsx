@@ -573,6 +573,8 @@ useEffect(() => {
             removeYDocument(
                 joinedDocumentId.current
             );
+            setActiveCollaborators({});
+setConnectedUsers({});
         }
 
         // ----------------------------------------
@@ -699,6 +701,8 @@ useEffect(() => {
             removeYDocument(
                 selectedDocument._id
             );
+            setActiveCollaborators({});
+setConnectedUsers({});
         }
 
         joinedDocumentId.current =

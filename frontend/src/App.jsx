@@ -153,53 +153,59 @@ useEffect(() => {
             data.documentId
         );
     };
+// ----------------------------------------
+// RECEIVE YJS UPDATE
+// ----------------------------------------
 
-    // ----------------------------------------
-    // RECEIVE YJS UPDATE
-    // ----------------------------------------
+const handleYjsUpdate = ({
+    documentId,
+    update,
+}) => {
+    if (!documentId || !update) {
+        return;
+    }
 
-    const handleYjsUpdate = ({
+    console.log(
+        "Received Yjs update:",
+        documentId
+    );
+
+    applyRemoteUpdate(
         documentId,
-        update,
-    }) => {
-        if (!documentId || !update) {
-            return;
-        }
+        update
+    );
 
-        console.log(
-            "Received Yjs update:",
-            documentId
-        );
+    if (
+        joinedDocumentId.current ===
+        documentId
+    ) {
+        const ydoc =
+            getYDocument(
+                documentId
+            );
 
-        applyRemoteUpdate(
-            documentId,
-            update
-        );
+        const updatedNodes =
+            getNodesFromYDoc(
+                ydoc
+            );
 
-        if (
-            joinedDocumentId.current ===
-            documentId
-        ) {
-            const ydoc =
-                getYDocument(
-                    documentId
-                );
+        setNodes(updatedNodes);
 
-            const updatedNodes =
-                getNodesFromYDoc(
-                    ydoc
-                );
+        const updatedTitle =
+            ydoc
+                .getMap("document")
+                .get("title") || "";
 
-            setNodes(updatedNodes);
+        setTitle(updatedTitle);
 
-            setHasUnsavedChanges(true);
-        }
+        setHasUnsavedChanges(true);
+    }
 
-        console.log(
-            "Remote Yjs update applied:",
-            documentId
-        );
-    };
+    console.log(
+        "Remote Yjs update applied:",
+        documentId
+    );
+};
 
     // ----------------------------------------
     // COLLABORATOR BLOCK FOCUS
@@ -1269,19 +1275,30 @@ setConnectedUsers({});
                                         value={
                                             title
                                         }
-                                        onChange={(
-                                            event
-                                        ) => {
-                                            setTitle(
-                                                event
-                                                    .target
-                                                    .value
-                                            );
+                                       onChange={(event) => {
+    const newTitle =
+        event.target.value;
 
-                                            setHasUnsavedChanges(
-                                                true
-                                            );
-                                        }}
+    setTitle(newTitle);
+
+    setHasUnsavedChanges(
+        true
+    );
+
+    if (selectedDocument) {
+        const ydoc =
+            getYDocument(
+                selectedDocument._id
+            );
+
+        ydoc
+            .getMap("document")
+            .set(
+                "title",
+                newTitle
+            );
+    }
+}}
                                         placeholder="Document title"
                                     />
 

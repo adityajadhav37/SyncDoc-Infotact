@@ -7,8 +7,10 @@ function Block({
     onDelete,
     onFocus,
     onBlur,
+    onCursorChange,
     isCollaboratorActive,
     collaboratorId,
+    remoteCursorPosition,
 }) {
     const handleChange = (event) => {
         onChange(index, {
@@ -17,16 +19,32 @@ function Block({
         });
     };
 
+    const handleCursorChange = (event) => {
+        const textarea = event.target;
+
+        const cursorPosition =
+            textarea.selectionStart;
+
+        console.log(
+            "Cursor position:",
+            cursorPosition
+        );
+
+        if (onCursorChange) {
+            onCursorChange(
+                index,
+                block.id,
+                cursorPosition
+            );
+        }
+    };
+
     const handleTypeChange = (event) => {
         onChange(index, {
             ...block,
             type: event.target.value,
         });
     };
-
-    // ----------------------------------------
-    // BLOCK FOCUS
-    // ----------------------------------------
 
     const handleFocus = () => {
         console.log(
@@ -41,10 +59,6 @@ function Block({
         }
     };
 
-    // ----------------------------------------
-    // BLOCK BLUR
-    // ----------------------------------------
-
     const handleBlur = () => {
         console.log(
             "Block blurred:",
@@ -58,10 +72,38 @@ function Block({
         }
     };
 
-    // ----------------------------------------
-    // RENDER EDITOR
-    // ----------------------------------------
+    const renderRemoteCursor = () => {
+    if (
+        remoteCursorPosition === undefined ||
+        remoteCursorPosition === null ||
+        remoteCursorPosition < 0 ||
+        remoteCursorPosition > block.content.length
+    ) {
+        return null;
+    }
 
+    return (
+        <div className="remote-cursor-indicator">
+            <span className="remote-cursor-dot">
+                ●
+            </span>
+
+            <span className="remote-cursor-label">
+                Collaborator
+            </span>
+
+            <span className="remote-cursor-id">
+                {collaboratorId
+                    ? collaboratorId.slice(-6)
+                    : "User"}
+            </span>
+
+            <span className="remote-cursor-position">
+                Position {remoteCursorPosition}
+            </span>
+        </div>
+    );
+};
     const renderEditor = () => {
         if (block.type === "code") {
             return (
@@ -69,6 +111,7 @@ function Block({
                     className="block-content code-block"
                     value={block.content}
                     onChange={handleChange}
+                    onSelect={handleCursorChange}
                     onFocus={handleFocus}
                     onBlur={handleBlur}
                     placeholder="Write code..."
@@ -82,6 +125,7 @@ function Block({
                 className={`block-content ${block.type}-block`}
                 value={block.content}
                 onChange={handleChange}
+                onSelect={handleCursorChange}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 placeholder={`Write ${block.type}...`}
@@ -94,15 +138,9 @@ function Block({
         );
     };
 
-    // ----------------------------------------
-    // BLOCK UI
-    // ----------------------------------------
-
     return (
         <div className="editor-block">
-
             <div className="block-toolbar">
-
                 <select
                     value={block.type}
                     onChange={handleTypeChange}
@@ -157,11 +195,13 @@ function Block({
                 >
                     Delete
                 </button>
-
             </div>
 
             {renderEditor()}
 
+            {remoteCursorPosition !== undefined &&
+                remoteCursorPosition !== null &&
+                renderRemoteCursor()}
         </div>
     );
 }

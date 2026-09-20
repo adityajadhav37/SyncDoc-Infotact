@@ -569,7 +569,46 @@ io.on("connection", (socket) => {
             );
         }
     );
+    // ================================
+    // CURSOR POSITION
+    // ================================
+    socket.on(
+        "cursor-position",
+        ({
+            documentId,
+            blockId,
+            cursorPosition,
+            clientId,
+        }) => {
+            if (
+                !documentId ||
+                !blockId ||
+                cursorPosition === undefined ||
+                !clientId
+            ) {
+                return;
+            }
 
+            const room =
+                `document:${documentId}`;
+
+            // Send cursor position to other
+            // collaborators in the same document.
+            socket.to(room).emit(
+                "cursor-position",
+                {
+                    documentId,
+                    blockId,
+                    cursorPosition,
+                    clientId,
+                }
+            );
+
+            console.log(
+                `Client ${clientId} cursor at ${cursorPosition} in block ${blockId}`
+            );
+        }
+    );
     // ================================
     // LEAVE DOCUMENT
     // ================================

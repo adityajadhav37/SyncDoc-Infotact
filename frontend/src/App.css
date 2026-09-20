@@ -564,3 +564,38 @@ button {
 .collaborator-indicator::first-letter {
     color: #f59e0b;
 }
+/* ================================
+   Remote Cursor Indicator
+================================ */
+
+.remote-cursor-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 4px 9px;
+    border-radius: 6px;
+    background: #eef4ff;
+    border: 1px solid #c9d9ff;
+    font-size: 12px;
+    color: #315aa8;
+}
+
+.remote-cursor-dot {
+    font-size: 10px;
+    color: #2563eb;
+}
+
+.remote-cursor-label {
+    font-weight: 600;
+}
+
+.remote-cursor-id {
+    font-weight: 500;
+    color: #64748b;
+}
+
+.remote-cursor-position {
+    color: #94a3b8;
+    font-size: 11px;
+}

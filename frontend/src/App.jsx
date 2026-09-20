@@ -62,6 +62,8 @@ const [activeCollaborators, setActiveCollaborators] =
     useState({});
 const [connectedUsers, setConnectedUsers] =
     useState({});
+    const [cursorPositions, setCursorPositions] =
+    useState({});
     const [newDocumentTitle, setNewDocumentTitle] =
         useState("");
 
@@ -418,7 +420,53 @@ const handleYjsUpdate = ({
         "block-blurred",
         handleBlockBlurred
     );
+    // ----------------------------------------
+    // COLLABORATOR CURSOR POSITION
+    // ----------------------------------------
 
+   const handleCursorPosition = ({
+    documentId,
+    blockId,
+    cursorPosition,
+    clientId: remoteClientId,
+}) => {
+    console.log(
+        "Remote cursor position received:",
+        {
+            documentId,
+            blockId,
+            cursorPosition,
+            remoteClientId,
+        }
+    );
+
+    if (
+        documentId !== joinedDocumentId.current ||
+        !blockId ||
+        cursorPosition === undefined ||
+        !remoteClientId
+    ) {
+        return;
+    }
+
+    // Ignore our own cursor position.
+    if (remoteClientId === clientId) {
+        return;
+    }
+
+    setCursorPositions((previous) => ({
+        ...previous,
+        [blockId]: {
+            position: cursorPosition,
+            clientId: remoteClientId,
+        },
+    }));
+};
+
+    socket.on(
+        "cursor-position",
+        handleCursorPosition
+    );
     socket.on(
         "document-users",
         handleDocumentUsers
@@ -462,6 +510,11 @@ const handleYjsUpdate = ({
         socket.off(
             "block-blurred",
             handleBlockBlurred
+        );
+
+        socket.off(
+            "cursor-position",
+            handleCursorPosition
         );
 
         socket.off(
@@ -1489,6 +1542,20 @@ setConnectedUsers({});
             clientId,
         });
     }}
+        onCursorChange={(
+        blockIndex,
+        blockId,
+        cursorPosition
+    ) => {
+        socket.emit("cursor-position", {
+            documentId:
+                selectedDocument._id,
+            blockId:
+                blockId || `block-${blockIndex + 1}`,
+            cursorPosition,
+            clientId,
+        });
+    }}
     isCollaboratorActive={
         Boolean(
             activeCollaborators[
@@ -1497,11 +1564,17 @@ setConnectedUsers({});
             ]
         )
     }
-    collaboratorId={
+   collaboratorId={
     activeCollaborators[
         block.id ||
             `block-${index + 1}`
     ]
+}
+remoteCursorPosition={
+    cursorPositions[
+        block.id ||
+            `block-${index + 1}`
+    ]?.position
 }
 />
 

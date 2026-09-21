@@ -245,50 +245,72 @@ const handleYjsUpdate = ({
             focusedClientId
         );
     };
+// ----------------------------------------
+// COLLABORATOR BLOCK BLUR
+// ----------------------------------------
 
-    // ----------------------------------------
-    // COLLABORATOR BLOCK BLUR
-    // ----------------------------------------
+const handleBlockBlurred = ({
+    documentId,
+    blockId,
+    clientId: blurredClientId,
+}) => {
+    if (
+        joinedDocumentId.current !==
+        documentId
+    ) {
+        return;
+    }
 
-    const handleBlockBlurred = ({
-        documentId,
-        blockId,
-        clientId: blurredClientId,
-    }) => {
-        if (
-            joinedDocumentId.current !==
-            documentId
-        ) {
-            return;
-        }
-
-        setActiveCollaborators(
-            (current) => {
-                if (
-                    current[blockId] !==
-                    blurredClientId
-                ) {
-                    return current;
-                }
-
-                const updated = {
-                    ...current,
-                };
-
-                delete updated[blockId];
-
-                return updated;
+    setActiveCollaborators(
+        (current) => {
+            if (
+                current[blockId] !==
+                blurredClientId
+            ) {
+                return current;
             }
-        );
 
-        console.log(
-            "Collaborator left block:",
-            blockId,
-            "Client:",
-            blurredClientId
-        );
-    };
+            const updated = {
+                ...current,
+            };
 
+            delete updated[blockId];
+
+            return updated;
+        }
+    );
+
+    // Clear the remote cursor for this block.
+    setCursorPositions(
+        (current) => {
+            const cursor =
+                current[blockId];
+
+            if (
+                !cursor ||
+                cursor.clientId !==
+                    blurredClientId
+            ) {
+                return current;
+            }
+
+            const updated = {
+                ...current,
+            };
+
+            delete updated[blockId];
+
+            return updated;
+        }
+    );
+
+    console.log(
+        "Collaborator left block:",
+        blockId,
+        "Client:",
+        blurredClientId
+    );
+};
     // ----------------------------------------
     // DOCUMENT ERROR
     // ----------------------------------------
@@ -308,34 +330,53 @@ const handleYjsUpdate = ({
     // ----------------------------------------
     // INITIAL DOCUMENT USERS
     // ----------------------------------------
+const handleDocumentUsers = ({
+    documentId,
+    clientIds,
+}) => {
+    if (
+        documentId !==
+        joinedDocumentId.current
+    ) {
+        return;
+    }
 
-    const handleDocumentUsers = ({
-        documentId,
-        clientIds,
-    }) => {
-        if (
-            documentId !==
-            joinedDocumentId.current
-        ) {
-            return;
+    const users = {};
+
+    clientIds.forEach(
+        (existingClientId) => {
+            users[existingClientId] = true;
         }
+    );
 
-        setConnectedUsers(() => {
-            const users = {};
+    setConnectedUsers(users);
 
-            clientIds.forEach(
-                (existingClientId) => {
-                    users[existingClientId] = true;
+    // Remove cursor positions belonging
+    // to collaborators who are no longer
+    // connected to this document.
+    setCursorPositions((current) => {
+        const updated = {};
+
+        Object.entries(current).forEach(
+            ([blockId, cursor]) => {
+                if (
+                    cursor &&
+                    clientIds.includes(
+                        cursor.clientId
+                    )
+                ) {
+                    updated[blockId] = cursor;
                 }
-            );
-
-            return users;
-        });
-
-        console.log(
-            `Initial document users received: ${clientIds.length}`
+            }
         );
-    };
+
+        return updated;
+    });
+
+    console.log(
+        `Document users updated: ${clientIds.length}`
+    );
+};
 
     // ----------------------------------------
     // USER JOINED DOCUMENT
@@ -634,6 +675,7 @@ const handleYjsUpdate = ({
             );
             setActiveCollaborators({});
 setConnectedUsers({});
+setCursorPositions({});
         }
 
         // ----------------------------------------
@@ -760,8 +802,9 @@ setConnectedUsers({});
             removeYDocument(
                 selectedDocument._id
             );
-            setActiveCollaborators({});
+setActiveCollaborators({});
 setConnectedUsers({});
+setCursorPositions({});
         }
 
         joinedDocumentId.current =

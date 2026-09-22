@@ -286,20 +286,27 @@ io.on("connection", (socket) => {
         `Socket connected: ${socket.id}`
     );
 
-    // ================================
-    // JOIN DOCUMENT
-    // ================================
-    socket.on(
-        "join-document",
-        async ({ documentId, clientId }) => {
-            try {
-                if (!documentId) {
-                    return;
-                }
+   // ================================
+// JOIN DOCUMENT
+// ================================
 
-                socket.data.clientId = clientId;
-                socket.data.documentId = documentId;
+socket.on(
+    "join-document",
+    async ({
+        documentId,
+        clientId,
+        collaboratorName,
+    }) => {
+        try {
+            if (!documentId) {
+                return;
+            }
 
+              socket.data.clientId = clientId;
+socket.data.collaboratorName =
+    collaboratorName ||
+    `User-${clientId.slice(-6)}`;
+socket.data.documentId = documentId;
                 if (
                     !mongoose.isValidObjectId(
                         documentId
@@ -359,57 +366,72 @@ io.on("connection", (socket) => {
                     `Socket ${socket.id} joined document ${documentId}`
                 );
 
-                // ================================
-                // INITIAL USER PRESENCE
-                // ================================
-                // Get all sockets currently inside
-                // this document room.
-                const roomSockets =
-                    await io
-                        .in(room)
-                        .fetchSockets();
+               // ================================
+// INITIAL USER PRESENCE
+// ================================
+// Get all sockets currently inside
+// this document room.
+const roomSockets =
+    await io
+        .in(room)
+        .fetchSockets();
 
-                // Collect the client IDs of users
-                // who were already in the document.
-                const existingUsers =
-                    roomSockets
-                        .map(
-                            (connectedSocket) =>
-                                connectedSocket
-                                    .data
-                                    .clientId
-                        )
-                        .filter(
-                            (existingClientId) =>
-                                existingClientId &&
-                                existingClientId !==
-                                    clientId
-                        );
+// Collect the client IDs and names of
+// users who are already in the document.
+const existingUsers =
+    roomSockets
+        .map(
+            (connectedSocket) => ({
+                clientId:
+                    connectedSocket
+                        .data
+                        .clientId,
 
-                // Send the existing users to the
-                // newly joined client.
-                socket.emit(
-                    "document-users",
-                    {
-                        documentId,
-                        clientIds:
-                            existingUsers,
-                    }
-                );
+                collaboratorName:
+                    connectedSocket
+                        .data
+                        .collaboratorName ||
+                    `User-${connectedSocket
+                        .data
+                        .clientId
+                        ?.slice(-6)}`,
+            })
+        )
+        .filter(
+            (existingUser) =>
+                existingUser.clientId &&
+                existingUser.clientId !==
+                    clientId
+        );
 
-                console.log(
-                    `Initial presence sent to ${socket.id}: ${existingUsers.length} existing user(s)`
-                );
+// Send the existing users to the
+// newly joined client.
+socket.emit(
+    "document-users",
+    {
+        documentId,
+        users: existingUsers,
+        clientIds: existingUsers.map(
+            (user) => user.clientId
+        ),
+    }
+);
 
+console.log(
+    `Initial presence sent to ${socket.id}: ${existingUsers.length} existing user(s)`
+);
                 // Notify existing users that
                 // a new collaborator joined.
                 socket.to(room).emit(
-                    "user-joined-document",
-                    {
-                        documentId,
-                        clientId,
-                    }
-                );
+    "user-joined-document",
+    {
+        documentId,
+        clientId,
+        collaboratorName:
+            collaboratorName ||
+            `User-${clientId.slice(-6)}`,
+    }
+);
 
                 // Convert Yjs blocks to normal JSON.
                 const nodes =

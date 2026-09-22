@@ -10,6 +10,7 @@ function Block({
     onCursorChange,
     isCollaboratorActive,
     collaboratorId,
+    collaboratorName,
     remoteCursorPosition,
 }) {
     const handleChange = (event) => {
@@ -88,9 +89,9 @@ function Block({
                 ●
             </span>
 
-            <span className="remote-cursor-label">
-                Collaborator
-            </span>
+           <span className="remote-cursor-label">
+    {collaboratorName || "Collaborator"}
+</span>
 
             <span className="remote-cursor-id">
                 {collaboratorId

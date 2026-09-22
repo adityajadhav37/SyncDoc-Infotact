@@ -28,7 +28,8 @@ const clientId =
     `${Date.now()}-${Math.random()
         .toString(36)
         .substring(2, 9)}`;
-
+const collaboratorName =
+    `User-${clientId.slice(-6)}`;
 // ========================================
 // CONVERT YJS BLOCKS TO REACT OBJECTS
 // ========================================
@@ -63,6 +64,8 @@ const [activeCollaborators, setActiveCollaborators] =
 const [connectedUsers, setConnectedUsers] =
     useState({});
     const [cursorPositions, setCursorPositions] =
+    useState({});
+    const [collaboratorNames, setCollaboratorNames] =
     useState({});
     const [newDocumentTitle, setNewDocumentTitle] =
         useState("");
@@ -328,11 +331,12 @@ const handleBlockBlurred = ({
     };
 
     // ----------------------------------------
-    // INITIAL DOCUMENT USERS
-    // ----------------------------------------
+// INITIAL DOCUMENT USERS
+// ----------------------------------------
 const handleDocumentUsers = ({
     documentId,
     clientIds,
+    users = [],
 }) => {
     if (
         documentId !==
@@ -341,15 +345,32 @@ const handleDocumentUsers = ({
         return;
     }
 
-    const users = {};
+    const connectedUsers = {};
 
     clientIds.forEach(
         (existingClientId) => {
-            users[existingClientId] = true;
+            connectedUsers[
+                existingClientId
+            ] = true;
         }
     );
 
-    setConnectedUsers(users);
+    setConnectedUsers(
+        connectedUsers
+    );
+
+    // Store collaborator names.
+    const names = {};
+
+    users.forEach((user) => {
+        if (user?.clientId) {
+            names[user.clientId] =
+                user.collaboratorName ||
+                `User-${user.clientId.slice(-6)}`;
+        }
+    });
+
+    setCollaboratorNames(names);
 
     // Remove cursor positions belonging
     // to collaborators who are no longer
@@ -377,15 +398,15 @@ const handleDocumentUsers = ({
         `Document users updated: ${clientIds.length}`
     );
 };
-
     // ----------------------------------------
     // USER JOINED DOCUMENT
     // ----------------------------------------
 
-    const handleUserJoinedDocument = ({
-        documentId,
-        clientId: joinedClientId,
-    }) => {
+   const handleUserJoinedDocument = ({
+    documentId,
+    clientId: joinedClientId,
+    collaboratorName,
+}) => {
         if (
             documentId !==
                 joinedDocumentId.current ||
@@ -400,44 +421,63 @@ const handleDocumentUsers = ({
                 [joinedClientId]: true,
             })
         );
-
+        setCollaboratorNames(
+    (current) => ({
+        ...current,
+        [joinedClientId]:
+            collaboratorName ||
+            `User-${joinedClientId.slice(-6)}`,
+    })
+);
         console.log(
             `User ${joinedClientId} joined the document`
         );
     };
 
-    // ----------------------------------------
-    // USER LEFT DOCUMENT
-    // ----------------------------------------
+  // ----------------------------------------
+// USER LEFT DOCUMENT
+// ----------------------------------------
 
-    const handleUserLeftDocument = ({
-        documentId,
-        clientId: leftClientId,
-    }) => {
-        if (
-            documentId !==
-            joinedDocumentId.current
-        ) {
-            return;
+const handleUserLeftDocument = ({
+    documentId,
+    clientId: leftClientId,
+}) => {
+    if (
+        documentId !==
+        joinedDocumentId.current
+    ) {
+        return;
+    }
+
+    setConnectedUsers(
+        (current) => {
+            const updated = {
+                ...current,
+            };
+
+            delete updated[leftClientId];
+
+            return updated;
         }
+    );
 
-        setConnectedUsers(
-            (current) => {
-                const updated = {
-                    ...current,
-                };
+    // Remove the collaborator name.
+    setCollaboratorNames(
+        (current) => {
+            const updated = {
+                ...current,
+            };
 
-                delete updated[leftClientId];
+            delete updated[leftClientId];
 
-                return updated;
-            }
-        );
+            return updated;
+        }
+    );
 
-        console.log(
-            `User ${leftClientId} left the document`
-        );
-    };
-
+    console.log(
+        `User ${leftClientId} left the document`
+    );
+};
     // ----------------------------------------
     // REGISTER SOCKET LISTENERS
     // ----------------------------------------
@@ -470,6 +510,7 @@ const handleDocumentUsers = ({
     blockId,
     cursorPosition,
     clientId: remoteClientId,
+    collaboratorName: remoteCollaboratorName,
 }) => {
     console.log(
         "Remote cursor position received:",
@@ -495,13 +536,16 @@ const handleDocumentUsers = ({
         return;
     }
 
-    setCursorPositions((previous) => ({
-        ...previous,
-        [blockId]: {
-            position: cursorPosition,
-            clientId: remoteClientId,
-        },
-    }));
+   setCursorPositions((previous) => ({
+    ...previous,
+    [blockId]: {
+        position: cursorPosition,
+        clientId: remoteClientId,
+        collaboratorName:
+            remoteCollaboratorName ||
+            `User-${remoteClientId.slice(-6)}`,
+    },
+}));
 };
 
     socket.on(
@@ -676,6 +720,7 @@ const handleDocumentUsers = ({
             setActiveCollaborators({});
 setConnectedUsers({});
 setCursorPositions({});
+setCollaboratorNames({});
         }
 
         // ----------------------------------------
@@ -776,17 +821,15 @@ setCursorPositions({});
         syncDocListener
     );
 }
-
-        // ----------------------------------------
-        // JOIN SOCKET.IO ROOM
-        // ----------------------------------------
-        socket.emit(
-            "join-document",
-            {
-                documentId: document._id,
-                clientId,
-            }
-        );
+socket.emit(
+    "join-document",
+    {
+        documentId: document._id,
+        clientId,
+        collaboratorName,
+    }
+);
+        
     };
 
     // ========================================
@@ -805,6 +848,7 @@ setCursorPositions({});
 setActiveCollaborators({});
 setConnectedUsers({});
 setCursorPositions({});
+setCollaboratorNames({});
         }
 
         joinedDocumentId.current =
@@ -1585,20 +1629,21 @@ setCursorPositions({});
             clientId,
         });
     }}
-        onCursorChange={(
-        blockIndex,
-        blockId,
-        cursorPosition
-    ) => {
-        socket.emit("cursor-position", {
-            documentId:
-                selectedDocument._id,
-            blockId:
-                blockId || `block-${blockIndex + 1}`,
-            cursorPosition,
-            clientId,
-        });
-    }}
+       onCursorChange={(
+    blockIndex,
+    blockId,
+    cursorPosition
+) => {
+    socket.emit("cursor-position", {
+        documentId:
+            selectedDocument._id,
+        blockId:
+            blockId || `block-${blockIndex + 1}`,
+        cursorPosition,
+        clientId,
+        collaboratorName,
+    });
+}}
     isCollaboratorActive={
         Boolean(
             activeCollaborators[
@@ -1618,6 +1663,13 @@ remoteCursorPosition={
         block.id ||
             `block-${index + 1}`
     ]?.position
+}
+
+collaboratorName={
+    cursorPositions[
+        block.id ||
+            `block-${index + 1}`
+    ]?.collaboratorName
 }
 />
 

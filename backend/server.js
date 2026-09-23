@@ -9,6 +9,9 @@ require("dotenv").config();
 
 const connectDB = require("./db");
 const Document = require("./models/Document");
+const {
+    transformDocumentToHtml,
+} = require("./services/documentTransformer");
 
 const {
     getYDocument,
@@ -123,7 +126,54 @@ app.get("/api/documents", async (req, res) => {
         });
     }
 });
+// ================================
+// TRANSFORM DOCUMENT TO HTML
+// ================================
+app.get(
+    "/api/documents/:id/html",
+    async (req, res) => {
+        try {
+            if (
+                !mongoose.isValidObjectId(
+                    req.params.id
+                )
+            ) {
+                return res.status(400).json({
+                    message: "Invalid document ID",
+                });
+            }
 
+            const document =
+                await Document.findById(
+                    req.params.id
+                );
+
+            if (!document) {
+                return res.status(404).json({
+                    message: "Document not found",
+                });
+            }
+
+            const html =
+                transformDocumentToHtml(
+                    document
+                );
+
+            res.type("html").send(html);
+        } catch (error) {
+            console.error(
+                "Document transformation failed:",
+                error
+            );
+
+            res.status(500).json({
+                message:
+                    "Failed to transform document",
+                error: error.message,
+            });
+        }
+    }
+);
 // ================================
 // GET SINGLE DOCUMENT
 // ================================

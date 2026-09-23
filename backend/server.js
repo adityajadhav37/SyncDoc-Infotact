@@ -12,7 +12,9 @@ const Document = require("./models/Document");
 const {
     transformDocumentToHtml,
 } = require("./services/documentTransformer");
-
+const {
+    transformDocumentToPdf,
+} = require("./services/pdfTransformer");
 const {
     getYDocument,
     initializeYDocument,
@@ -169,6 +171,161 @@ app.get(
             res.status(500).json({
                 message:
                     "Failed to transform document",
+                error: error.message,
+            });
+        }
+    }
+);
+// ================================
+// EXPORT DOCUMENT AS HTML
+// ================================
+app.get(
+    "/api/documents/:id/export/html",
+    async (req, res) => {
+        try {
+            if (
+                !mongoose.isValidObjectId(
+                    req.params.id
+                )
+            ) {
+                return res.status(400).json({
+                    message: "Invalid document ID",
+                });
+            }
+
+            const document =
+                await Document.findById(
+                    req.params.id
+                );
+
+            if (!document) {
+                return res.status(404).json({
+                    message: "Document not found",
+                });
+            }
+
+            const html =
+                transformDocumentToHtml(
+                    document
+                );
+
+            const safeTitle =
+                (document.title ||
+                    "syncdoc-document")
+                    .replace(
+                        /[^a-z0-9-_]/gi,
+                        "-"
+                    )
+                    .replace(
+                        /-+/g,
+                        "-"
+                    )
+                    .toLowerCase();
+
+            res.setHeader(
+                "Content-Disposition",
+                `attachment; filename="${safeTitle}.html"`
+            );
+
+            res.type("html").send(html);
+        } catch (error) {
+            console.error(
+                "HTML export failed:",
+                error
+            );
+
+            res.status(500).json({
+                message:
+                    "Failed to export document as HTML",
+                error: error.message,
+            });
+        }
+    }
+);
+// ================================
+// EXPORT DOCUMENT AS PDF
+// ================================
+app.get(
+    "/api/documents/:id/export/pdf",
+    async (req, res) => {
+        try {
+            if (
+                !mongoose.isValidObjectId(
+                    req.params.id
+                )
+            ) {
+                return res.status(400).json({
+                    message: "Invalid document ID",
+                });
+            }
+
+            const document =
+                await Document.findById(
+                    req.params.id
+                );
+
+            if (!document) {
+                return res.status(404).json({
+                    message: "Document not found",
+                });
+            }
+
+            const safeTitle =
+                (document.title ||
+                    "syncdoc-document")
+                    .replace(
+                        /[^a-z0-9-_]/gi,
+                        "-"
+                    )
+                    .replace(
+                        /-+/g,
+                        "-"
+                    )
+                    .toLowerCase();
+
+            const pdf =
+                transformDocumentToPdf(
+                    document
+                );
+
+            res.setHeader(
+                "Content-Type",
+                "application/pdf"
+            );
+
+            res.setHeader(
+                "Content-Disposition",
+                `attachment; filename="${safeTitle}.pdf"`
+            );
+
+            pdf.pipe(res);
+
+            pdf.on("error", (error) => {
+                console.error(
+                    "PDF generation failed:",
+                    error
+                );
+
+                if (!res.headersSent) {
+                    res.status(500).json({
+                        message:
+                            "Failed to generate PDF",
+                        error:
+                            error.message,
+                    });
+                }
+            });
+
+            pdf.end();
+        } catch (error) {
+            console.error(
+                "PDF export failed:",
+                error
+            );
+
+            res.status(500).json({
+                message:
+                    "Failed to export document as PDF",
                 error: error.message,
             });
         }

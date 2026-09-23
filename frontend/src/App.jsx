@@ -44,6 +44,9 @@ const getNodesFromYDoc = (ydoc) => {
         children: JSON.parse(
             block.get("children") || "[]"
         ),
+        atomic: Boolean(
+            block.get("atomic")
+        ),
     }));
 };
 
@@ -67,6 +70,8 @@ const [connectedUsers, setConnectedUsers] =
     useState({});
     const [collaboratorNames, setCollaboratorNames] =
     useState({});
+    const [atomicBlocks, setAtomicBlocks] =
+        useState({});
     const [newDocumentTitle, setNewDocumentTitle] =
         useState("");
 
@@ -509,18 +514,21 @@ const handleUserLeftDocument = ({
     documentId,
     blockId,
     cursorPosition,
+    selectionEnd,
     clientId: remoteClientId,
     collaboratorName: remoteCollaboratorName,
+
 }) => {
-    console.log(
-        "Remote cursor position received:",
-        {
-            documentId,
-            blockId,
-            cursorPosition,
-            remoteClientId,
-        }
-    );
+   console.log(
+    "Remote cursor position received:",
+    {
+        documentId,
+        blockId,
+        cursorPosition,
+        selectionEnd,
+        remoteClientId,
+    }
+);
 
     if (
         documentId !== joinedDocumentId.current ||
@@ -538,13 +546,14 @@ const handleUserLeftDocument = ({
 
    setCursorPositions((previous) => ({
     ...previous,
-    [blockId]: {
-        position: cursorPosition,
-        clientId: remoteClientId,
-        collaboratorName:
-            remoteCollaboratorName ||
-            `User-${remoteClientId.slice(-6)}`,
-    },
+  [blockId]: {
+    position: cursorPosition,
+    selectionEnd,
+    clientId: remoteClientId,
+    collaboratorName:
+        remoteCollaboratorName ||
+        `User-${remoteClientId.slice(-6)}`,
+},
 }));
 };
 
@@ -907,6 +916,11 @@ setCollaboratorNames({});
             JSON.stringify([])
         );
 
+        newBlock.set(
+            "atomic",
+            false
+        );
+
         blocksArray.push([
             newBlock,
         ]);
@@ -961,6 +975,11 @@ setCollaboratorNames({});
                         []
                 )
             );
+
+            yBlock.set(
+                "atomic",
+                Boolean(updatedBlock.atomic)
+            );
         }
 
         setNodes(
@@ -975,6 +994,56 @@ setCollaboratorNames({});
                             ? updatedBlock
                             : block
                 )
+        );
+
+        setHasUnsavedChanges(true);
+    };
+
+    // ========================================
+    // ATOMIC BLOCK
+    // ========================================
+
+    const handleAtomicChange = (
+        index,
+        isAtomic
+    ) => {
+        if (!selectedDocument) {
+            return;
+        }
+
+        const ydoc =
+            getYDocument(
+                selectedDocument._id
+            );
+
+        const blocksArray =
+            ydoc.getArray("blocks");
+
+        const yBlock =
+            blocksArray.get(index);
+
+        if (!yBlock) {
+            return;
+        }
+
+        yBlock.set(
+            "atomic",
+            Boolean(isAtomic)
+        );
+
+        const blockId =
+            yBlock.get("id") ||
+            `block-${index + 1}`;
+
+        setAtomicBlocks(
+            (current) => ({
+                ...current,
+                [blockId]: Boolean(isAtomic),
+            })
+        );
+
+        setNodes(
+            getNodesFromYDoc(ydoc)
         );
 
         setHasUnsavedChanges(true);
@@ -1479,15 +1548,38 @@ setCollaboratorNames({});
 
                                 <div className="editor-actions">
 
-                                    <button
-                                        className="secondary-button"
-                                        onClick={
-                                            closeEditor
-                                        }
-                                    >
-                                        Close
-                                    </button>
+                                 <button
+    className="secondary-button"
+    onClick={() => {
+        window.open(
+            `http://localhost:5000/api/documents/${selectedDocument._id}/export/html`,
+            "_blank"
+        );
+    }}
+>
+    Export HTML
+</button>
 
+<button
+    className="secondary-button"
+    onClick={() => {
+        window.open(
+            `http://localhost:5000/api/documents/${selectedDocument._id}/export/pdf`,
+            "_blank"
+        );
+    }}
+>
+    Export PDF
+</button>
+
+<button
+    className="secondary-button"
+    onClick={
+        closeEditor
+    }
+>
+    Close
+</button>
                                     <button
                                         className="danger-button"
                                         onClick={
@@ -1606,7 +1698,7 @@ setCollaboratorNames({});
                                         ) => (
 
                                             <Block
-    key={`${selectedDocument._id}-${block.id || index}`}
+   key={`${selectedDocument._id}-${block.id || `block-${index + 1}`}`}
     block={block}
     index={index}
     onChange={updateBlock}
@@ -1631,8 +1723,9 @@ setCollaboratorNames({});
     }}
        onCursorChange={(
     blockIndex,
-    blockId,
-    cursorPosition
+blockId,
+cursorPosition,
+selectionEnd
 ) => {
     socket.emit("cursor-position", {
         documentId:
@@ -1640,6 +1733,7 @@ setCollaboratorNames({});
         blockId:
             blockId || `block-${blockIndex + 1}`,
         cursorPosition,
+        selectionEnd,
         clientId,
         collaboratorName,
     });
@@ -1665,12 +1759,21 @@ remoteCursorPosition={
     ]?.position
 }
 
+remoteSelectionEnd={
+    cursorPositions[
+        block.id ||
+            `block-${index + 1}`
+    ]?.selectionEnd
+}
+
 collaboratorName={
     cursorPositions[
         block.id ||
             `block-${index + 1}`
     ]?.collaboratorName
 }
+isAtomic={Boolean(block.atomic)}
+onAtomicChange={handleAtomicChange}
 />
 
                                         )

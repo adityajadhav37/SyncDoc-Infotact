@@ -12,7 +12,18 @@ function Block({
     collaboratorId,
     collaboratorName,
     remoteCursorPosition,
+    remoteSelectionEnd,
+    isAtomic,
+    onAtomicChange,
 }) {
+    const blockId =
+        block.id || `block-${index + 1}`;
+
+    const atomicState =
+        isAtomic !== undefined
+            ? Boolean(isAtomic)
+            : Boolean(block.atomic);
+
     const handleChange = (event) => {
         onChange(index, {
             ...block,
@@ -26,16 +37,15 @@ function Block({
         const cursorPosition =
             textarea.selectionStart;
 
-        console.log(
-            "Cursor position:",
-            cursorPosition
-        );
+        const selectionEnd =
+            textarea.selectionEnd;
 
         if (onCursorChange) {
             onCursorChange(
                 index,
-                block.id,
-                cursorPosition
+                blockId,
+                cursorPosition,
+                selectionEnd
             );
         }
     };
@@ -47,64 +57,70 @@ function Block({
         });
     };
 
-    const handleFocus = () => {
-        console.log(
-            "Block focused:",
-            block.id,
-            "Index:",
-            index
-        );
+    const handleAtomicChange = (event) => {
+        if (onAtomicChange) {
+            onAtomicChange(
+                index,
+                event.target.checked
+            );
+        }
+    };
 
+    const handleFocus = () => {
         if (onFocus) {
-            onFocus(index, block.id);
+            onFocus(index, blockId);
         }
     };
 
     const handleBlur = () => {
-        console.log(
-            "Block blurred:",
-            block.id,
-            "Index:",
-            index
-        );
-
         if (onBlur) {
-            onBlur(index, block.id);
+            onBlur(index, blockId);
         }
     };
 
     const renderRemoteCursor = () => {
-    if (
-        remoteCursorPosition === undefined ||
-        remoteCursorPosition === null ||
-        remoteCursorPosition < 0 ||
-        remoteCursorPosition > block.content.length
-    ) {
-        return null;
-    }
+        if (
+            remoteCursorPosition === undefined ||
+            remoteCursorPosition === null ||
+            remoteCursorPosition < 0 ||
+            remoteCursorPosition > block.content.length
+        ) {
+            return null;
+        }
 
-    return (
-        <div className="remote-cursor-indicator">
-            <span className="remote-cursor-dot">
-                ●
-            </span>
+        return (
+            <div className="remote-cursor-indicator">
+                <span className="remote-cursor-dot">
+                    ●
+                </span>
 
-           <span className="remote-cursor-label">
-    {collaboratorName || "Collaborator"}
-</span>
+                <span className="remote-cursor-label">
+                    {collaboratorName || "Collaborator"}
+                </span>
 
-            <span className="remote-cursor-id">
-                {collaboratorId
-                    ? collaboratorId.slice(-6)
-                    : "User"}
-            </span>
+                <span className="remote-cursor-id">
+                    {collaboratorId
+                        ? collaboratorId.slice(-6)
+                        : "User"}
+                </span>
 
-            <span className="remote-cursor-position">
-                Position {remoteCursorPosition}
-            </span>
-        </div>
-    );
-};
+                <span className="remote-cursor-position">
+                    Position {remoteCursorPosition}
+                </span>
+
+                {remoteSelectionEnd !== undefined &&
+                    remoteSelectionEnd !== null &&
+                    remoteSelectionEnd !==
+                        remoteCursorPosition && (
+                        <span className="remote-selection-position">
+                            Selection {remoteCursorPosition}–
+                            {remoteSelectionEnd}
+                        </span>
+                    )}
+            </div>
+        );
+    };
+
     const renderEditor = () => {
         if (block.type === "code") {
             return (
@@ -113,6 +129,8 @@ function Block({
                     value={block.content}
                     onChange={handleChange}
                     onSelect={handleCursorChange}
+                    onClick={handleCursorChange}
+                    onKeyUp={handleCursorChange}
                     onFocus={handleFocus}
                     onBlur={handleBlur}
                     placeholder="Write code..."
@@ -127,6 +145,8 @@ function Block({
                 value={block.content}
                 onChange={handleChange}
                 onSelect={handleCursorChange}
+                onClick={handleCursorChange}
+                onKeyUp={handleCursorChange}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 placeholder={`Write ${block.type}...`}
@@ -140,7 +160,12 @@ function Block({
     };
 
     return (
-        <div className="editor-block">
+        <div
+            className={`editor-block${
+                atomicState ? " atomic-block" : ""
+            }`}
+            data-block-id={blockId}
+        >
             <div className="block-toolbar">
                 <select
                     value={block.type}
@@ -172,6 +197,21 @@ function Block({
                     Block {index + 1}
                 </span>
 
+                <label className="atomic-block-control">
+                    <input
+                        type="checkbox"
+                        checked={atomicState}
+                        onChange={handleAtomicChange}
+                    />
+                    Atomic
+                </label>
+
+                {atomicState && (
+                    <span className="atomic-block-indicator">
+                        ● Atomic block
+                    </span>
+                )}
+
                 {isCollaboratorActive && (
                     <span className="collaborator-indicator">
                         ● Collaborator editing
@@ -190,9 +230,7 @@ function Block({
                 <button
                     type="button"
                     className="delete-block-button"
-                    onClick={() =>
-                        onDelete(index)
-                    }
+                    onClick={() => onDelete(index)}
                 >
                     Delete
                 </button>

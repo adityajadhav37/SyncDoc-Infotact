@@ -72,6 +72,8 @@ const [connectedUsers, setConnectedUsers] =
     useState({});
     const [atomicBlocks, setAtomicBlocks] =
         useState({});
+    const [activeBlockId, setActiveBlockId] =
+    useState(null);    
     const [newDocumentTitle, setNewDocumentTitle] =
         useState("");
 
@@ -208,6 +210,27 @@ const handleYjsUpdate = ({
 
         setTitle(updatedTitle);
 
+        setActiveBlockId(
+            (currentActiveBlockId) => {
+                if (
+                    !currentActiveBlockId
+                ) {
+                    return null;
+                }
+
+                const activeBlockStillExists =
+                    updatedNodes.some(
+                        (node) =>
+                            node.id ===
+                            currentActiveBlockId
+                    );
+
+                return activeBlockStillExists
+                    ? currentActiveBlockId
+                    : null;
+            }
+        );
+
         setHasUnsavedChanges(true);
     }
 
@@ -216,7 +239,6 @@ const handleYjsUpdate = ({
         documentId
     );
 };
-
     // ----------------------------------------
     // COLLABORATOR BLOCK FOCUS
     // ----------------------------------------
@@ -730,6 +752,7 @@ const handleUserLeftDocument = ({
 setConnectedUsers({});
 setCursorPositions({});
 setCollaboratorNames({});
+setActiveBlockId(null);
         }
 
         // ----------------------------------------
@@ -738,6 +761,8 @@ setCollaboratorNames({});
 
         setSelectedDocument(document);
 
+        setActiveBlockId(null);
+        
         setTitle(
             document.title
         );
@@ -1050,38 +1075,52 @@ setCollaboratorNames({});
     };
 
     // ========================================
-    // DELETE BLOCK
-    // ========================================
+// DELETE BLOCK
+// ========================================
 
-    const deleteBlock = (
-        index
-    ) => {
-        if (!selectedDocument) {
-            return;
-        }
+const deleteBlock = (
+    index
+) => {
+    if (!selectedDocument) {
+        return;
+    }
 
-        const ydoc =
-            getYDocument(
-                selectedDocument._id
-            );
-
-        const blocksArray =
-            ydoc.getArray("blocks");
-
-        blocksArray.delete(
-            index,
-            1
+    const ydoc =
+        getYDocument(
+            selectedDocument._id
         );
 
-        setNodes(
-            getNodesFromYDoc(
-                ydoc
-            )
-        );
+    const blocksArray =
+        ydoc.getArray("blocks");
 
-        setHasUnsavedChanges(true);
-    };
+    const deletedBlock =
+        blocksArray.get(index);
 
+    const deletedBlockId =
+        deletedBlock?.get("id") ||
+        `block-${index + 1}`;
+
+    blocksArray.delete(
+        index,
+        1
+    );
+
+    setNodes(
+        getNodesFromYDoc(
+            ydoc
+        )
+    );
+
+    setActiveBlockId(
+        (current) =>
+            current ===
+            deletedBlockId
+                ? null
+                : current
+    );
+
+    setHasUnsavedChanges(true);
+};
     // ========================================
     // SAVE DOCUMENT
     // ========================================
@@ -1697,30 +1736,64 @@ setCollaboratorNames({});
                                             index
                                         ) => (
 
-                                            <Block
-   key={`${selectedDocument._id}-${block.id || `block-${index + 1}`}`}
-    block={block}
-    index={index}
+                                           <div
+    style={{
+        border:
+            activeBlockId ===
+            (block.id ||
+                `block-${index + 1}`)
+                ? "2px solid #2563eb"
+                : "2px solid transparent",
+        borderRadius: "10px",
+        padding: "2px",
+        transition:
+            "border-color 0.15s ease",
+    }}
+>
+    <Block
+        key={`${selectedDocument._id}-${block.id || `block-${index + 1}`}`}
+        block={block}
+        index={index}
     onChange={updateBlock}
     onDelete={deleteBlock}
-    onFocus={(blockIndex, blockId) => {
-        socket.emit("block-focus", {
-            documentId:
-                selectedDocument._id,
-            blockId:
-                blockId || `block-${blockIndex + 1}`,
-            clientId,
-        });
-    }}
-       onBlur={(blockIndex, blockId) => {
-        socket.emit("block-blur", {
-            documentId:
-                selectedDocument._id,
-            blockId:
-                blockId || `block-${blockIndex + 1}`,
-            clientId,
-        });
-    }}
+   onFocus={(blockIndex, blockId) => {
+    const currentBlockId =
+        blockId ||
+        `block-${blockIndex + 1}`;
+
+    setActiveBlockId(
+        currentBlockId
+    );
+
+    socket.emit("block-focus", {
+        documentId:
+            selectedDocument._id,
+        blockId:
+            currentBlockId,
+        clientId,
+    });
+}}
+onBlur={(blockIndex, blockId) => {
+    const currentBlockId =
+        blockId ||
+        `block-${blockIndex + 1}`;
+
+    setActiveBlockId(
+        (current) =>
+            current ===
+            currentBlockId
+                ? null
+                : current
+    );
+
+    socket.emit("block-blur", {
+        documentId:
+            selectedDocument._id,
+        blockId:
+            currentBlockId,
+        clientId,
+    });
+}}
        onCursorChange={(
     blockIndex,
 blockId,
@@ -1773,8 +1846,9 @@ collaboratorName={
     ]?.collaboratorName
 }
 isAtomic={Boolean(block.atomic)}
-onAtomicChange={handleAtomicChange}
-/>
+        onAtomicChange={handleAtomicChange}
+    />
+</div>
 
                                         )
                                     )

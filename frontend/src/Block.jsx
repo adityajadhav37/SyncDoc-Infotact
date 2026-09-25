@@ -3,8 +3,12 @@ import React from "react";
 function Block({
     block,
     index,
+    totalBlocks,
     onChange,
     onDelete,
+    onDuplicate,
+    onMoveUp,
+    onMoveDown,
     onFocus,
     onBlur,
     onCursorChange,
@@ -227,13 +231,50 @@ function Block({
                     </span>
                 )}
 
-                <button
-                    type="button"
-                    className="delete-block-button"
-                    onClick={() => onDelete(index)}
-                >
-                    Delete
-                </button>
+             <button
+    type="button"
+    className="move-block-button"
+    onClick={() => {
+        if (onMoveUp) {
+            onMoveUp();
+        }
+    }}
+    disabled={index === 0}
+>
+    ↑ Up
+</button>
+<button
+    type="button"
+    className="move-block-button"
+    onClick={() => {
+        if (onMoveDown) {
+            onMoveDown();
+        }
+    }}
+    disabled={index === totalBlocks - 1}
+>
+    ↓ Down
+</button>
+
+<button
+    type="button"
+    className="duplicate-block-button"
+    onClick={() => {
+        if (onDuplicate) {
+            onDuplicate();
+        }
+    }}
+>
+    Duplicate
+</button>
+
+<button
+    type="button"
+    className="delete-block-button"
+    onClick={() => onDelete(index)}
+>
+    Delete
+</button>
             </div>
 
             {renderEditor()}

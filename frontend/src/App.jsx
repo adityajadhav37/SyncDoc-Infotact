@@ -958,7 +958,265 @@ setCollaboratorNames({});
 
         setHasUnsavedChanges(true);
     };
+// ========================================
+// DUPLICATE ACTIVE BLOCK
+// ========================================
 
+const duplicateBlock = (index) => {
+    if (!selectedDocument) {
+        return;
+    }
+
+    const ydoc =
+        getYDocument(
+            selectedDocument._id
+        );
+
+    const blocksArray =
+        ydoc.getArray("blocks");
+
+    const sourceBlock =
+        blocksArray.get(index);
+
+    if (!sourceBlock) {
+        return;
+    }
+
+    const duplicatedBlock =
+        new Y.Map();
+
+    duplicatedBlock.set(
+        "id",
+        `block-${Date.now()}`
+    );
+
+    duplicatedBlock.set(
+        "type",
+        sourceBlock.get("type") ||
+            "paragraph"
+    );
+
+    duplicatedBlock.set(
+        "content",
+        sourceBlock.get("content") ||
+            ""
+    );
+
+    duplicatedBlock.set(
+        "children",
+        sourceBlock.get("children") ||
+            JSON.stringify([])
+    );
+
+    duplicatedBlock.set(
+        "atomic",
+        Boolean(
+            sourceBlock.get("atomic")
+        )
+    );
+
+    blocksArray.insert(
+        index + 1,
+        [duplicatedBlock]
+    );
+
+    setNodes(
+        getNodesFromYDoc(
+            ydoc
+        )
+    );
+
+    setHasUnsavedChanges(true);
+
+    setActiveBlockId(
+        duplicatedBlock.get("id")
+    );
+};
+// ========================================
+// MOVE BLOCK UP
+// ========================================
+
+const moveBlockUp = (index) => {
+    if (!selectedDocument || index <= 0) {
+        return;
+    }
+
+    const ydoc =
+        getYDocument(
+            selectedDocument._id
+        );
+
+    const blocksArray =
+        ydoc.getArray("blocks");
+
+    const currentBlock =
+        blocksArray.get(index);
+
+    const previousBlock =
+        blocksArray.get(index - 1);
+
+    if (
+        !currentBlock ||
+        !previousBlock
+    ) {
+        return;
+    }
+
+    const currentBlockData =
+        currentBlock.toJSON();
+
+    const previousBlockData =
+        previousBlock.toJSON();
+
+    blocksArray.delete(
+        index - 1,
+        2
+    );
+
+    const newCurrentBlock =
+        new Y.Map();
+
+    Object.entries(
+        currentBlockData
+    ).forEach(
+        ([key, value]) => {
+            newCurrentBlock.set(
+                key,
+                value
+            );
+        }
+    );
+
+    const newPreviousBlock =
+        new Y.Map();
+
+    Object.entries(
+        previousBlockData
+    ).forEach(
+        ([key, value]) => {
+            newPreviousBlock.set(
+                key,
+                value
+            );
+        }
+    );
+
+    blocksArray.insert(
+        index - 1,
+        [
+            newCurrentBlock,
+            newPreviousBlock,
+        ]
+    );
+
+    setNodes(
+        getNodesFromYDoc(
+            ydoc
+        )
+    );
+
+    setHasUnsavedChanges(true);
+
+    setActiveBlockId(
+        currentBlockData.id
+    );
+};
+// ========================================
+// MOVE BLOCK DOWN
+// ========================================
+
+const moveBlockDown = (index) => {
+    if (!selectedDocument) {
+        return;
+    }
+
+    const ydoc =
+        getYDocument(
+            selectedDocument._id
+        );
+
+    const blocksArray =
+        ydoc.getArray("blocks");
+
+    if (
+        index < 0 ||
+        index >= blocksArray.length - 1
+    ) {
+        return;
+    }
+
+    const currentBlock =
+        blocksArray.get(index);
+
+    const nextBlock =
+        blocksArray.get(index + 1);
+
+    if (
+        !currentBlock ||
+        !nextBlock
+    ) {
+        return;
+    }
+
+    const currentBlockData =
+        currentBlock.toJSON();
+
+    const nextBlockData =
+        nextBlock.toJSON();
+
+    blocksArray.delete(
+        index,
+        2
+    );
+
+    const newNextBlock =
+        new Y.Map();
+
+    Object.entries(
+        nextBlockData
+    ).forEach(
+        ([key, value]) => {
+            newNextBlock.set(
+                key,
+                value
+            );
+        }
+    );
+
+    const newCurrentBlock =
+        new Y.Map();
+
+    Object.entries(
+        currentBlockData
+    ).forEach(
+        ([key, value]) => {
+            newCurrentBlock.set(
+                key,
+                value
+            );
+        }
+    );
+
+    blocksArray.insert(
+        index,
+        [
+            newNextBlock,
+            newCurrentBlock,
+        ]
+    );
+
+    setNodes(
+        getNodesFromYDoc(
+            ydoc
+        )
+    );
+
+    setHasUnsavedChanges(true);
+
+    setActiveBlockId(
+        currentBlockData.id
+    );
+};
     // ========================================
     // UPDATE BLOCK
     // ========================================
@@ -1754,9 +2012,19 @@ const deleteBlock = (
         key={`${selectedDocument._id}-${block.id || `block-${index + 1}`}`}
         block={block}
         index={index}
-    onChange={updateBlock}
-    onDelete={deleteBlock}
-   onFocus={(blockIndex, blockId) => {
+        totalBlocks={nodes.length}
+  onChange={updateBlock}
+onDelete={deleteBlock}
+onDuplicate={() =>
+    duplicateBlock(index)
+}
+onMoveUp={() =>
+    moveBlockUp(index)
+}
+onMoveDown={() =>
+    moveBlockDown(index)
+}
+onFocus={(blockIndex, blockId) => {
     const currentBlockId =
         blockId ||
         `block-${blockIndex + 1}`;

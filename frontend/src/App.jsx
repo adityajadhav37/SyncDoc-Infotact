@@ -904,8 +904,9 @@ setCollaboratorNames({});
     // ========================================
 
     const addBlock = (
-        type = "paragraph"
-    ) => {
+    type = "paragraph",
+    afterIndex = null
+) => {
         if (!selectedDocument) {
             return;
         }
@@ -946,16 +947,26 @@ setCollaboratorNames({});
             false
         );
 
-        blocksArray.push([
-            newBlock,
-        ]);
+        const insertIndex =
+    afterIndex !== null
+        ? afterIndex + 1
+        : blocksArray.length;
+
+blocksArray.insert(
+    insertIndex,
+    [newBlock]
+);
+const newBlockId =
+    newBlock.get("id");
 
         setNodes(
             getNodesFromYDoc(
                 ydoc
             )
         );
-
+if (newBlockId) {
+    setActiveBlockId(newBlockId);
+}
         setHasUnsavedChanges(true);
     };
 // ========================================
@@ -2013,6 +2024,7 @@ const deleteBlock = (
         block={block}
         index={index}
         totalBlocks={nodes.length}
+        activeBlockId={activeBlockId}
   onChange={updateBlock}
 onDelete={deleteBlock}
 onDuplicate={() =>
@@ -2024,6 +2036,13 @@ onMoveUp={() =>
 onMoveDown={() =>
     moveBlockDown(index)
 }
+onAddBlock={(blockIndex) =>
+    addBlock(
+        "paragraph",
+        blockIndex
+    )
+}
+
 onFocus={(blockIndex, blockId) => {
     const currentBlockId =
         blockId ||

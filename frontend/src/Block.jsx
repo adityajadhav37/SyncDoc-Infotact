@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 function Block({
     block,
     index,
     totalBlocks,
+    activeBlockId,
+    onAddBlock,
     onChange,
     onDelete,
     onDuplicate,
@@ -23,6 +25,19 @@ function Block({
     const blockId =
         block.id || `block-${index + 1}`;
 
+const textareaRef = useRef(null);
+useEffect(() => {
+    if (
+        activeBlockId &&
+        activeBlockId === blockId &&
+        textareaRef.current
+    ) {
+        textareaRef.current.focus();
+    }
+}, [
+    activeBlockId,
+    blockId,
+]);
     const atomicState =
         isAtomic !== undefined
             ? Boolean(isAtomic)
@@ -54,6 +69,56 @@ function Block({
         }
     };
 
+   // ========================================
+// KEYBOARD SHORTCUTS
+// ========================================
+
+const handleKeyDown = (event) => {
+    // Ctrl + Enter → Add new block
+    if (
+        event.ctrlKey &&
+        event.key === "Enter"
+    ) {
+        event.preventDefault();
+
+        if (onAddBlock) {
+            onAddBlock(index);
+        }
+
+        return;
+    }
+
+    // Ctrl + Shift + Arrow Up → Move block up
+    if (
+        event.ctrlKey &&
+        event.shiftKey &&
+        event.key === "ArrowUp"
+    ) {
+        event.preventDefault();
+
+        if (onMoveUp && index > 0) {
+            onMoveUp();
+        }
+
+        return;
+    }
+
+    // Ctrl + Shift + Arrow Down → Move block down
+    if (
+        event.ctrlKey &&
+        event.shiftKey &&
+        event.key === "ArrowDown"
+    ) {
+        event.preventDefault();
+
+        if (
+            onMoveDown &&
+            index < totalBlocks - 1
+        ) {
+            onMoveDown();
+        }
+    }
+};
     const handleTypeChange = (event) => {
         onChange(index, {
             ...block,
@@ -128,11 +193,13 @@ function Block({
     const renderEditor = () => {
         if (block.type === "code") {
             return (
-                <textarea
-                    className="block-content code-block"
+               <textarea
+    ref={textareaRef}
+    className="block-content code-block"
                     value={block.content}
                     onChange={handleChange}
                     onSelect={handleCursorChange}
+                    onKeyDown={handleKeyDown}
                     onClick={handleCursorChange}
                     onKeyUp={handleCursorChange}
                     onFocus={handleFocus}
@@ -149,6 +216,7 @@ function Block({
                 value={block.content}
                 onChange={handleChange}
                 onSelect={handleCursorChange}
+                onKeyDown={handleKeyDown}
                 onClick={handleCursorChange}
                 onKeyUp={handleCursorChange}
                 onFocus={handleFocus}

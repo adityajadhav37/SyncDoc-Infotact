@@ -85,9 +85,11 @@ const [connectedUsers, setConnectedUsers] =
     const [hasUnsavedChanges, setHasUnsavedChanges] =
         useState(false);
 
-    // Keep track of the currently joined document.
-    const joinedDocumentId = useRef(null);
+  // Keep track of the currently joined document.
 
+const joinedDocumentId = useRef(null);
+
+const undoManagerRef = useRef(null);
     // ========================================
     // FETCH ALL DOCUMENTS
     // ========================================
@@ -783,14 +785,23 @@ setActiveBlockId(null);
         // ----------------------------------------
 
         const ydoc =
-            getYDocument(
-                document._id
-            );
+    getYDocument(
+        document._id
+    );
+undoManagerRef.current =
+    new Y.UndoManager(
+        ydoc.getArray("blocks"),
+        {
+            trackedOrigins: new Set([
+                null,
+            ]),
+        }
+    );
 
-        console.log(
-            "Yjs document created:",
-            ydoc
-        );
+console.log(
+    "Yjs document created:",
+    ydoc
+);
 
         // ----------------------------------------
         // GET COLLABORATION MANAGER
@@ -969,6 +980,57 @@ if (newBlockId) {
 }
         setHasUnsavedChanges(true);
     };
+// ========================================
+// UNDO / REDO
+// ========================================
+
+const undo = () => {
+    if (
+        !undoManagerRef.current ||
+        !joinedDocumentId.current
+    ) {
+        return;
+    }
+
+    undoManagerRef.current.undo();
+
+    const ydoc =
+        getYDocument(
+            joinedDocumentId.current
+        );
+
+    setNodes(
+        getNodesFromYDoc(
+            ydoc
+        )
+    );
+
+    setHasUnsavedChanges(true);
+};
+
+const redo = () => {
+    if (
+        !undoManagerRef.current ||
+        !joinedDocumentId.current
+    ) {
+        return;
+    }
+
+    undoManagerRef.current.redo();
+
+    const ydoc =
+        getYDocument(
+            joinedDocumentId.current
+        );
+
+    setNodes(
+        getNodesFromYDoc(
+            ydoc
+        )
+    );
+
+    setHasUnsavedChanges(true);
+};
 // ========================================
 // DUPLICATE ACTIVE BLOCK
 // ========================================
@@ -1997,150 +2059,210 @@ const deleteBlock = (
 
                                     </div>
 
-                                ) : (
+                             ) : (
+    <>
+        {/* ================================= */}
+        {/* UNDO / REDO TOOLBAR */}
+        {/* ================================= */}
 
-                                    nodes.map(
-                                        (
-                                            block,
-                                            index
-                                        ) => (
+        <div
+            className="editor-history-controls"
+            style={{
+                display: "flex",
+                gap: "8px",
+                marginBottom: "12px",
+            }}
+        >
+            <button
+                type="button"
+                className="secondary-button"
+                onClick={undo}
+            >
+                ↶ Undo
+            </button>
 
-                                           <div
-    style={{
-        border:
-            activeBlockId ===
-            (block.id ||
-                `block-${index + 1}`)
-                ? "2px solid #2563eb"
-                : "2px solid transparent",
-        borderRadius: "10px",
-        padding: "2px",
-        transition:
-            "border-color 0.15s ease",
-    }}
->
-    <Block
-        key={`${selectedDocument._id}-${block.id || `block-${index + 1}`}`}
-        block={block}
-        index={index}
-        totalBlocks={nodes.length}
-        activeBlockId={activeBlockId}
-  onChange={updateBlock}
-onDelete={deleteBlock}
-onDuplicate={() =>
-    duplicateBlock(index)
-}
-onMoveUp={() =>
-    moveBlockUp(index)
-}
-onMoveDown={() =>
-    moveBlockDown(index)
-}
-onAddBlock={(blockIndex) =>
-    addBlock(
-        "paragraph",
-        blockIndex
-    )
-}
+            <button
+                type="button"
+                className="secondary-button"
+                onClick={redo}
+            >
+                ↷ Redo
+            </button>
+        </div>
 
-onFocus={(blockIndex, blockId) => {
-    const currentBlockId =
-        blockId ||
-        `block-${blockIndex + 1}`;
+        {nodes.map(
+            (
+                block,
+                index
+            ) => (
+                <div
+                    key={`${selectedDocument._id}-${block.id || `block-${index + 1}`}`}
+                    style={{
+                        border:
+                            activeBlockId ===
+                            (
+                                block.id ||
+                                `block-${index + 1}`
+                            )
+                                ? "2px solid #2563eb"
+                                : "2px solid transparent",
+                        borderRadius: "10px",
+                        padding: "2px",
+                        transition:
+                            "border-color 0.15s ease",
+                    }}
+                >
+                    <Block
+                        block={block}
+                        index={index}
+                        totalBlocks={nodes.length}
+                        activeBlockId={activeBlockId}
 
-    setActiveBlockId(
-        currentBlockId
-    );
+                        onChange={updateBlock}
 
-    socket.emit("block-focus", {
-        documentId:
-            selectedDocument._id,
-        blockId:
-            currentBlockId,
-        clientId,
-    });
-}}
-onBlur={(blockIndex, blockId) => {
-    const currentBlockId =
-        blockId ||
-        `block-${blockIndex + 1}`;
+                        onDelete={deleteBlock}
 
-    setActiveBlockId(
-        (current) =>
-            current ===
-            currentBlockId
-                ? null
-                : current
-    );
+                        onDuplicate={() =>
+                            duplicateBlock(index)
+                        }
 
-    socket.emit("block-blur", {
-        documentId:
-            selectedDocument._id,
-        blockId:
-            currentBlockId,
-        clientId,
-    });
-}}
-       onCursorChange={(
-    blockIndex,
-blockId,
-cursorPosition,
-selectionEnd
-) => {
-    socket.emit("cursor-position", {
-        documentId:
-            selectedDocument._id,
-        blockId:
-            blockId || `block-${blockIndex + 1}`,
-        cursorPosition,
-        selectionEnd,
-        clientId,
-        collaboratorName,
-    });
-}}
-    isCollaboratorActive={
-        Boolean(
-            activeCollaborators[
-                block.id ||
-                    `block-${index + 1}`
-            ]
-        )
-    }
-   collaboratorId={
-    activeCollaborators[
-        block.id ||
-            `block-${index + 1}`
-    ]
-}
-remoteCursorPosition={
-    cursorPositions[
-        block.id ||
-            `block-${index + 1}`
-    ]?.position
-}
+                        onMoveUp={() =>
+                            moveBlockUp(index)
+                        }
 
-remoteSelectionEnd={
-    cursorPositions[
-        block.id ||
-            `block-${index + 1}`
-    ]?.selectionEnd
-}
+                        onMoveDown={() =>
+                            moveBlockDown(index)
+                        }
 
-collaboratorName={
-    cursorPositions[
-        block.id ||
-            `block-${index + 1}`
-    ]?.collaboratorName
-}
-isAtomic={Boolean(block.atomic)}
-        onAtomicChange={handleAtomicChange}
-    />
-</div>
+                        onAddBlock={(blockIndex) =>
+                            addBlock(
+                                "paragraph",
+                                blockIndex
+                            )
+                        }
 
-                                        )
-                                    )
+                        onUndo={undo}
 
-                                )}
+                        onRedo={redo}
+
+                        onFocus={(blockIndex, blockId) => {
+                            const currentBlockId =
+                                blockId ||
+                                `block-${blockIndex + 1}`;
+
+                            setActiveBlockId(
+                                currentBlockId
+                            );
+
+                            socket.emit(
+                                "block-focus",
+                                {
+                                    documentId:
+                                        selectedDocument._id,
+                                    blockId:
+                                        currentBlockId,
+                                    clientId,
+                                }
+                            );
+                        }}
+
+                        onBlur={(blockIndex, blockId) => {
+                            const currentBlockId =
+                                blockId ||
+                                `block-${blockIndex + 1}`;
+
+                            setActiveBlockId(
+                                (current) =>
+                                    current ===
+                                    currentBlockId
+                                        ? null
+                                        : current
+                            );
+
+                            socket.emit(
+                                "block-blur",
+                                {
+                                    documentId:
+                                        selectedDocument._id,
+                                    blockId:
+                                        currentBlockId,
+                                    clientId,
+                                }
+                            );
+                        }}
+
+                        onCursorChange={(
+                            blockIndex,
+                            blockId,
+                            cursorPosition,
+                            selectionEnd
+                        ) => {
+                            socket.emit(
+                                "cursor-position",
+                                {
+                                    documentId:
+                                        selectedDocument._id,
+                                    blockId:
+                                        blockId ||
+                                        `block-${blockIndex + 1}`,
+                                    cursorPosition,
+                                    selectionEnd,
+                                    clientId,
+                                    collaboratorName,
+                                }
+                            );
+                        }}
+
+                        isCollaboratorActive={
+                            Boolean(
+                                activeCollaborators[
+                                    block.id ||
+                                    `block-${index + 1}`
+                                ]
+                            )
+                        }
+
+                        collaboratorId={
+                            activeCollaborators[
+                                block.id ||
+                                `block-${index + 1}`
+                            ]
+                        }
+
+                        remoteCursorPosition={
+                            cursorPositions[
+                                block.id ||
+                                `block-${index + 1}`
+                            ]?.position
+                        }
+
+                        remoteSelectionEnd={
+                            cursorPositions[
+                                block.id ||
+                                `block-${index + 1}`
+                            ]?.selectionEnd
+                        }
+
+                        collaboratorName={
+                            cursorPositions[
+                                block.id ||
+                                `block-${index + 1}`
+                            ]?.collaboratorName
+                        }
+
+                        isAtomic={
+                            Boolean(block.atomic)
+                        }
+
+                        onAtomicChange={
+                            handleAtomicChange
+                        }
+                    />
+                </div>
+            )
+        )}
+    </>
+)}
 
                             </div>
 
@@ -2152,7 +2274,7 @@ isAtomic={Boolean(block.atomic)}
 
             </main>
 
-                    </div>
+        </div>
     );
 }
 

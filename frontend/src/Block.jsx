@@ -6,6 +6,8 @@ function Block({
     totalBlocks,
     activeBlockId,
     onAddBlock,
+    onUndo,
+    onRedo,
     onChange,
     onDelete,
     onDuplicate,
@@ -74,6 +76,34 @@ useEffect(() => {
 // ========================================
 
 const handleKeyDown = (event) => {
+    // Ctrl + Z → Undo
+if (
+    event.ctrlKey &&
+    !event.shiftKey &&
+    event.key.toLowerCase() === "z"
+) {
+    event.preventDefault();
+
+    if (onUndo) {
+        onUndo();
+    }
+
+    return;
+}
+
+// Ctrl + Y → Redo
+if (
+    event.ctrlKey &&
+    event.key.toLowerCase() === "y"
+) {
+    event.preventDefault();
+
+    if (onRedo) {
+        onRedo();
+    }
+
+    return;
+}
     // Ctrl + Enter → Add new block
     if (
         event.ctrlKey &&

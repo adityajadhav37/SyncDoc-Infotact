@@ -45,6 +45,11 @@ const nodeSchema = new mongoose.Schema(
             default: "",
         },
 
+        atomic: {
+            type: Boolean,
+            default: false,
+        },
+
         children: {
             type: [mongoose.Schema.Types.Mixed],
             default: [],

@@ -1920,26 +1920,50 @@ const deleteBlock = (
 
                                  <button
     className="secondary-button"
-    onClick={() => {
-        window.open(
-            `http://localhost:5000/api/documents/${selectedDocument._id}/export/html`,
-            "_blank"
-        );
+    onClick={async () => {
+        try {
+            await saveDocument();
+
+            window.open(
+                `http://localhost:5000/api/documents/${selectedDocument._id}/export/html`,
+                "_blank"
+            );
+        } catch (error) {
+            setMessage(
+                error.message ||
+                    "Failed to export HTML"
+            );
+        }
     }}
+    disabled={loading}
 >
-    Export HTML
+    {loading
+        ? "Preparing..."
+        : "Export HTML"}
 </button>
 
 <button
     className="secondary-button"
-    onClick={() => {
-        window.open(
-            `http://localhost:5000/api/documents/${selectedDocument._id}/export/pdf`,
-            "_blank"
-        );
+    onClick={async () => {
+        try {
+            await saveDocument();
+
+            window.open(
+                `http://localhost:5000/api/documents/${selectedDocument._id}/export/pdf`,
+                "_blank"
+            );
+        } catch (error) {
+            setMessage(
+                error.message ||
+                    "Failed to export PDF"
+            );
+        }
     }}
+    disabled={loading}
 >
-    Export PDF
+    {loading
+        ? "Preparing..."
+        : "Export PDF"}
 </button>
 
 <button

@@ -612,3 +612,121 @@ button {
     color: #64748b;
     font-size: 11px;
 }
+/* ========================================
+   DAY 23 - EDITOR UI POLISH
+   ======================================== */
+
+/* History controls */
+.editor-history-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 15px 0 12px;
+    padding: 8px 10px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.editor-history-controls .secondary-button {
+    min-width: 82px;
+}
+
+/* Disabled buttons */
+.secondary-button:disabled,
+.primary-button:disabled,
+.danger-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Smoother editor blocks */
+.editor-block {
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.15s ease;
+}
+
+.editor-block:hover {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+/* Atomic block */
+.atomic-block {
+    border-color: #f59e0b !important;
+    background: #fffbeb;
+    box-shadow:
+        0 0 0 2px rgba(245, 158, 11, 0.08),
+        0 4px 14px rgba(245, 158, 11, 0.08);
+}
+
+/* Atomic block control */
+.atomic-block-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.atomic-block-control input {
+    cursor: pointer;
+    accent-color: #f59e0b;
+}
+
+/* Atomic indicator */
+.atomic-block-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Better export buttons */
+.editor-actions .secondary-button {
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.15s ease;
+}
+
+.editor-actions .secondary-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+/* Better focus visibility */
+.block-type:focus,
+.atomic-block-control input:focus {
+    outline: 2px solid rgba(37, 99, 235, 0.25);
+    outline-offset: 2px;
+}
+
+/* Mobile history toolbar */
+@media (max-width: 700px) {
+    .editor-history-controls {
+        flex-wrap: wrap;
+    }
+
+    .editor-history-controls .secondary-button {
+        flex: 1;
+        min-width: 100px;
+    }
+
+    .atomic-block-control,
+    .atomic-block-indicator {
+        margin-top: 4px;
+    }
+}

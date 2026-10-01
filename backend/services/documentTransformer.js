@@ -4,7 +4,7 @@
 // Converts SyncDoc AST nodes into HTML.
 // Handles nested document structures,
 // lists, list items, headings, paragraphs,
-// and code blocks.
+// code blocks, and atomic blocks.
 // ----------------------------------------
 
 const escapeHtml = (value = "") => {
@@ -31,6 +31,16 @@ const transformChildren = (children = []) => {
 };
 
 // ----------------------------------------
+// ATOMIC CLASS
+// ----------------------------------------
+
+const getAtomicClass = (node) => {
+    return node.atomic
+        ? " atomic-export-block"
+        : "";
+};
+
+// ----------------------------------------
 // TRANSFORM SINGLE AST NODE
 // ----------------------------------------
 
@@ -42,6 +52,9 @@ const transformNode = (node) => {
     const content = escapeHtml(
         node.content || ""
     );
+
+    const atomicClass =
+        getAtomicClass(node);
 
     switch (node.type) {
         case "document":
@@ -55,9 +68,10 @@ const transformNode = (node) => {
 
         case "heading":
             return `
-                <h2>
+                <h2 class="${atomicClass}">
                     ${content}
                 </h2>
+
                 ${transformChildren(
                     node.children || []
                 )}
@@ -65,36 +79,47 @@ const transformNode = (node) => {
 
         case "paragraph":
             return `
-                <p>
+                <p class="${atomicClass}">
                     ${content}
                 </p>
+
                 ${transformChildren(
                     node.children || []
                 )}
             `;
 
-       case "list":
-    return `
-        ${
-            content
-                ? `<p class="list-title">${content}</p>`
-                : ""
-        }
+        case "list":
+            return `
+                ${
+                    content
+                        ? `<p class="list-title">${content}</p>`
+                        : ""
+                }
 
-        <ul>
-            ${transformChildren(
-                node.children || []
-            )}
-        </ul>
-    `;
+                <ul class="${atomicClass}">
+                    ${transformChildren(
+                        node.children || []
+                    )}
+                </ul>
+            `;
 
         case "listItem":
-    return `<li>${content}${transformChildren(
-        node.children || []
-    )}</li>`;
+            return `
+                <li class="${atomicClass}">
+                    ${content}
+
+                    ${transformChildren(
+                        node.children || []
+                    )}
+                </li>
+            `;
 
         case "code":
-    return `<pre><code>${content}</code></pre>`;
+            return `
+                <pre class="${atomicClass}">
+                    <code>${content}</code>
+                </pre>
+            `;
 
         default:
             return "";
@@ -192,6 +217,16 @@ const transformDocumentToHtml = (
                 Monaco,
                 monospace;
         }
+
+        /* ========================================
+           ATOMIC BLOCK EXPORT
+           ======================================== */
+
+        .atomic-export-block {
+            border-left: 4px solid #f59e0b;
+            background: #fffbeb;
+            padding-left: 12px;
+        }
     </style>
 </head>
 
@@ -210,6 +245,10 @@ const transformDocumentToHtml = (
 </html>
 `.trim();
 };
+
+// ----------------------------------------
+// EXPORT
+// ----------------------------------------
 
 module.exports = {
     transformDocumentToHtml,

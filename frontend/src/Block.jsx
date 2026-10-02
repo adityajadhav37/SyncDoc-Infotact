@@ -27,19 +27,18 @@ function Block({
     const blockId =
         block.id || `block-${index + 1}`;
 
-const textareaRef = useRef(null);
-useEffect(() => {
-    if (
-        activeBlockId &&
-        activeBlockId === blockId &&
-        textareaRef.current
-    ) {
-        textareaRef.current.focus();
-    }
-}, [
-    activeBlockId,
-    blockId,
-]);
+    const textareaRef = useRef(null);
+
+    useEffect(() => {
+        if (
+            activeBlockId &&
+            activeBlockId === blockId &&
+            textareaRef.current
+        ) {
+            textareaRef.current.focus();
+        }
+    }, [activeBlockId, blockId]);
+
     const atomicState =
         isAtomic !== undefined
             ? Boolean(isAtomic)
@@ -71,84 +70,86 @@ useEffect(() => {
         }
     };
 
-   // ========================================
-// KEYBOARD SHORTCUTS
-// ========================================
+    // ========================================
+    // KEYBOARD SHORTCUTS
+    // ========================================
 
-const handleKeyDown = (event) => {
-    // Ctrl + Z → Undo
-if (
-    event.ctrlKey &&
-    !event.shiftKey &&
-    event.key.toLowerCase() === "z"
-) {
-    event.preventDefault();
-
-    if (onUndo) {
-        onUndo();
-    }
-
-    return;
-}
-
-// Ctrl + Y → Redo
-if (
-    event.ctrlKey &&
-    event.key.toLowerCase() === "y"
-) {
-    event.preventDefault();
-
-    if (onRedo) {
-        onRedo();
-    }
-
-    return;
-}
-    // Ctrl + Enter → Add new block
-    if (
-        event.ctrlKey &&
-        event.key === "Enter"
-    ) {
-        event.preventDefault();
-
-        if (onAddBlock) {
-            onAddBlock(index);
-        }
-
-        return;
-    }
-
-    // Ctrl + Shift + Arrow Up → Move block up
-    if (
-        event.ctrlKey &&
-        event.shiftKey &&
-        event.key === "ArrowUp"
-    ) {
-        event.preventDefault();
-
-        if (onMoveUp && index > 0) {
-            onMoveUp();
-        }
-
-        return;
-    }
-
-    // Ctrl + Shift + Arrow Down → Move block down
-    if (
-        event.ctrlKey &&
-        event.shiftKey &&
-        event.key === "ArrowDown"
-    ) {
-        event.preventDefault();
-
+    const handleKeyDown = (event) => {
+        // Ctrl + Z → Undo
         if (
-            onMoveDown &&
-            index < totalBlocks - 1
+            event.ctrlKey &&
+            !event.shiftKey &&
+            event.key.toLowerCase() === "z"
         ) {
-            onMoveDown();
+            event.preventDefault();
+
+            if (onUndo) {
+                onUndo();
+            }
+
+            return;
         }
-    }
-};
+
+        // Ctrl + Y → Redo
+        if (
+            event.ctrlKey &&
+            event.key.toLowerCase() === "y"
+        ) {
+            event.preventDefault();
+
+            if (onRedo) {
+                onRedo();
+            }
+
+            return;
+        }
+
+        // Ctrl + Enter → Add new block
+        if (
+            event.ctrlKey &&
+            event.key === "Enter"
+        ) {
+            event.preventDefault();
+
+            if (onAddBlock) {
+                onAddBlock(index);
+            }
+
+            return;
+        }
+
+        // Ctrl + Shift + Arrow Up
+        if (
+            event.ctrlKey &&
+            event.shiftKey &&
+            event.key === "ArrowUp"
+        ) {
+            event.preventDefault();
+
+            if (onMoveUp && index > 0) {
+                onMoveUp();
+            }
+
+            return;
+        }
+
+        // Ctrl + Shift + Arrow Down
+        if (
+            event.ctrlKey &&
+            event.shiftKey &&
+            event.key === "ArrowDown"
+        ) {
+            event.preventDefault();
+
+            if (
+                onMoveDown &&
+                index < totalBlocks - 1
+            ) {
+                onMoveDown();
+            }
+        }
+    };
+
     const handleTypeChange = (event) => {
         onChange(index, {
             ...block,
@@ -182,19 +183,22 @@ if (
             remoteCursorPosition === undefined ||
             remoteCursorPosition === null ||
             remoteCursorPosition < 0 ||
-            remoteCursorPosition > block.content.length
+            remoteCursorPosition >
+                block.content.length
         ) {
             return null;
         }
 
         return (
             <div className="remote-cursor-indicator">
+
                 <span className="remote-cursor-dot">
                     ●
                 </span>
 
                 <span className="remote-cursor-label">
-                    {collaboratorName || "Collaborator"}
+                    {collaboratorName ||
+                        "Collaborator"}
                 </span>
 
                 <span className="remote-cursor-id">
@@ -207,15 +211,19 @@ if (
                     Position {remoteCursorPosition}
                 </span>
 
-                {remoteSelectionEnd !== undefined &&
-                    remoteSelectionEnd !== null &&
+                {remoteSelectionEnd !==
+                    undefined &&
+                    remoteSelectionEnd !==
+                        null &&
                     remoteSelectionEnd !==
                         remoteCursorPosition && (
                         <span className="remote-selection-position">
-                            Selection {remoteCursorPosition}–
+                            Selection{" "}
+                            {remoteCursorPosition}–
                             {remoteSelectionEnd}
                         </span>
                     )}
+
             </div>
         );
     };
@@ -223,9 +231,9 @@ if (
     const renderEditor = () => {
         if (block.type === "code") {
             return (
-               <textarea
-    ref={textareaRef}
-    className="block-content code-block"
+                <textarea
+                    ref={textareaRef}
+                    className="block-content code-block"
                     value={block.content}
                     onChange={handleChange}
                     onSelect={handleCursorChange}
@@ -242,6 +250,7 @@ if (
 
         return (
             <textarea
+                ref={textareaRef}
                 className={`block-content ${block.type}-block`}
                 value={block.content}
                 onChange={handleChange}
@@ -264,122 +273,207 @@ if (
     return (
         <div
             className={`editor-block${
-                atomicState ? " atomic-block" : ""
+                atomicState
+                    ? " atomic-block"
+                    : ""
             }`}
             data-block-id={blockId}
         >
+
+            {/* ================================= */}
+            {/* BLOCK TOOLBAR */}
+            {/* ================================= */}
+
             <div className="block-toolbar">
-                <select
-                    value={block.type}
-                    onChange={handleTypeChange}
-                    className="block-type"
-                >
-                    <option value="paragraph">
-                        Paragraph
-                    </option>
 
-                    <option value="heading">
-                        Heading
-                    </option>
+                <div className="block-toolbar-left">
 
-                    <option value="list">
-                        List
-                    </option>
-
-                    <option value="listItem">
-                        List Item
-                    </option>
-
-                    <option value="code">
-                        Code
-                    </option>
-                </select>
-
-                <span className="block-number">
-                    Block {index + 1}
-                </span>
-
-                <label className="atomic-block-control">
-                    <input
-                        type="checkbox"
-                        checked={atomicState}
-                        onChange={handleAtomicChange}
-                    />
-                    Atomic
-                </label>
-
-                {atomicState && (
-                    <span className="atomic-block-indicator">
-                        ● Atomic block
+                    <span className="block-drag-handle">
+                        ⋮⋮
                     </span>
-                )}
 
-                {isCollaboratorActive && (
-                    <span className="collaborator-indicator">
-                        ● Collaborator editing
+                    <span className="block-number">
+                        Block {index + 1}
+                    </span>
 
-                        {collaboratorId && (
-                            <span className="collaborator-id">
-                                {" "}
-                                (
-                                {collaboratorId.slice(-6)}
-                                )
+                    <select
+                        value={block.type}
+                        onChange={handleTypeChange}
+                        className="block-type"
+                        aria-label="Block type"
+                    >
+                        <option value="paragraph">
+                            Paragraph
+                        </option>
+
+                        <option value="heading">
+                            Heading
+                        </option>
+
+                        <option value="list">
+                            List
+                        </option>
+
+                        <option value="listItem">
+                            List Item
+                        </option>
+
+                        <option value="code">
+                            Code
+                        </option>
+                    </select>
+
+                </div>
+
+
+                <div className="block-toolbar-right">
+
+                    {/* ATOMIC */}
+
+                    <label className="atomic-block-control">
+
+                        <input
+                            type="checkbox"
+                            checked={atomicState}
+                            onChange={
+                                handleAtomicChange
+                            }
+                        />
+
+                        <span>
+                            Atomic
+                        </span>
+
+                    </label>
+
+
+                    {atomicState && (
+                        <span className="atomic-block-indicator">
+                            <span className="atomic-status-dot">
+                                ●
                             </span>
-                        )}
-                    </span>
-                )}
 
-             <button
-    type="button"
-    className="move-block-button"
-    onClick={() => {
-        if (onMoveUp) {
-            onMoveUp();
-        }
-    }}
-    disabled={index === 0}
->
-    ↑ Up
-</button>
-<button
-    type="button"
-    className="move-block-button"
-    onClick={() => {
-        if (onMoveDown) {
-            onMoveDown();
-        }
-    }}
-    disabled={index === totalBlocks - 1}
->
-    ↓ Down
-</button>
+                            Atomic
+                        </span>
+                    )}
 
-<button
-    type="button"
-    className="duplicate-block-button"
-    onClick={() => {
-        if (onDuplicate) {
-            onDuplicate();
-        }
-    }}
->
-    Duplicate
-</button>
 
-<button
-    type="button"
-    className="delete-block-button"
-    onClick={() => onDelete(index)}
->
-    Delete
-</button>
+                    {/* COLLABORATOR */}
+
+                    {isCollaboratorActive && (
+                        <span className="collaborator-indicator">
+
+                            <span className="collaborator-status-dot">
+                                ●
+                            </span>
+
+                            Collaborator editing
+
+                            {collaboratorId && (
+                                <span className="collaborator-id">
+                                    {" "}
+                                    (
+                                    {collaboratorId.slice(
+                                        -6
+                                    )}
+                                    )
+                                </span>
+                            )}
+
+                        </span>
+                    )}
+
+
+                    {/* MOVE */}
+
+                    <button
+                        type="button"
+                        className="block-action-button"
+                        onClick={() => {
+                            if (onMoveUp) {
+                                onMoveUp();
+                            }
+                        }}
+                        disabled={index === 0}
+                        title="Move block up"
+                    >
+                        ↑
+                    </button>
+
+
+                    <button
+                        type="button"
+                        className="block-action-button"
+                        onClick={() => {
+                            if (onMoveDown) {
+                                onMoveDown();
+                            }
+                        }}
+                        disabled={
+                            index ===
+                            totalBlocks - 1
+                        }
+                        title="Move block down"
+                    >
+                        ↓
+                    </button>
+
+
+                    {/* DUPLICATE */}
+
+                    <button
+                        type="button"
+                        className="block-action-button"
+                        onClick={() => {
+                            if (onDuplicate) {
+                                onDuplicate();
+                            }
+                        }}
+                        title="Duplicate block"
+                    >
+                        ⧉
+                    </button>
+
+
+                    {/* DELETE */}
+
+                    <button
+                        type="button"
+                        className="block-delete-button"
+                        onClick={() =>
+                            onDelete(index)
+                        }
+                        title="Delete block"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
             </div>
 
-            {renderEditor()}
 
-            {remoteCursorPosition !== undefined &&
-                remoteCursorPosition !== null &&
+            {/* ================================= */}
+            {/* BLOCK EDITOR */}
+            {/* ================================= */}
+
+            <div className="block-editor-area">
+
+                {renderEditor()}
+
+            </div>
+
+
+            {/* ================================= */}
+            {/* REMOTE CURSOR */}
+            {/* ================================= */}
+
+            {remoteCursorPosition !==
+                undefined &&
+                remoteCursorPosition !==
+                    null &&
                 renderRemoteCursor()}
+
         </div>
     );
 }

@@ -1598,30 +1598,38 @@ const deleteBlock = (
             {/* HEADER */}
             {/* ================================= */}
 
-            <header className="app-header">
+           <header className="app-header dashboard-header">
+    <div className="brand-section">
+        <div className="brand-icon">
+            SD
+        </div>
 
-                <div>
-                    <h1>
-                        SyncDoc
-                    </h1>
+        <div className="brand-content">
+            <h1>SyncDoc</h1>
 
-                    <p>
-                        Collaborative Document Engine
-                    </p>
-                </div>
+            <p>
+                Collaborative Document Workspace
+            </p>
+        </div>
+    </div>
 
-                <button
-                    className="primary-button"
-                    onClick={() =>
-                        setShowCreateForm(
-                            true
-                        )
-                    }
-                >
-                    + New Document
-                </button>
+    <div className="header-actions">
+        <div className="workspace-status">
+            <span className="status-dot"></span>
+            <span>Workspace active</span>
+        </div>
 
-            </header>
+        <button
+            className="primary-button new-document-button"
+            onClick={() =>
+                setShowCreateForm(true)
+            }
+        >
+            <span className="button-icon">+</span>
+            New Document
+        </button>
+    </div>
+</header>
 
             {/* ================================= */}
             {/* STATUS MESSAGE */}
@@ -1632,73 +1640,116 @@ const deleteBlock = (
                     {message}
                 </div>
             )}
+{/* ================================= */}
+{/* CREATE DOCUMENT MODAL */}
+{/* ================================= */}
 
-            {/* ================================= */}
-            {/* CREATE DOCUMENT FORM */}
-            {/* ================================= */}
+{showCreateForm && (
+    <div
+        className="create-modal-overlay"
+        onMouseDown={(event) => {
+            if (
+                event.target ===
+                event.currentTarget
+            ) {
+                setShowCreateForm(false);
+                setNewDocumentTitle("");
+            }
+        }}
+    >
 
-            {showCreateForm && (
-                <div className="create-form-container">
+        <div className="create-modal">
 
-                    <form
-                        onSubmit={
-                            createDocument
+            <div className="create-modal-header">
+
+                <div className="create-modal-icon">
+                    +
+                </div>
+
+                <div>
+                    <h2>
+                        Create New Document
+                    </h2>
+
+                    <p>
+                        Start a new collaborative document.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    className="create-modal-close"
+                    onClick={() => {
+                        setShowCreateForm(false);
+                        setNewDocumentTitle("");
+                    }}
+                    aria-label="Close"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <form
+                onSubmit={createDocument}
+                className="create-modal-form"
+            >
+
+                <label htmlFor="new-document-title">
+                    Document title
+                </label>
+
+                <input
+                    id="new-document-title"
+                    type="text"
+                    value={newDocumentTitle}
+                    onChange={(event) =>
+                        setNewDocumentTitle(
+                            event.target.value
+                        )
+                    }
+                    placeholder="e.g. Project Documentation"
+                    autoFocus
+                />
+
+                <p className="create-modal-hint">
+                    Give your document a clear name so
+                    it is easy to find later.
+                </p>
+
+
+                <div className="create-modal-actions">
+
+                    <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => {
+                            setShowCreateForm(false);
+                            setNewDocumentTitle("");
+                        }}
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        type="submit"
+                        className="primary-button"
+                        disabled={
+                            !newDocumentTitle.trim()
                         }
                     >
-
-                        <h2>
-                            Create New Document
-                        </h2>
-
-                        <input
-                            type="text"
-                            value={
-                                newDocumentTitle
-                            }
-                            onChange={(
-                                event
-                            ) =>
-                                setNewDocumentTitle(
-                                    event
-                                        .target
-                                        .value
-                                )
-                            }
-                            placeholder="Enter document title"
-                            autoFocus
-                        />
-
-                        <div className="form-actions">
-
-                            <button
-                                type="submit"
-                                className="primary-button"
-                            >
-                                Create
-                            </button>
-
-                            <button
-                                type="button"
-                                className="secondary-button"
-                                onClick={() => {
-                                    setShowCreateForm(
-                                        false
-                                    );
-
-                                    setNewDocumentTitle(
-                                        ""
-                                    );
-                                }}
-                            >
-                                Cancel
-                            </button>
-
-                        </div>
-
-                    </form>
+                        Create Document
+                    </button>
 
                 </div>
-            )}
+
+            </form>
+
+        </div>
+
+    </div>
+)}
 
             {/* ================================= */}
             {/* MAIN WORKSPACE */}
@@ -1706,301 +1757,758 @@ const deleteBlock = (
 
             <main className="workspace">
 
-                {/* ================================= */}
-                {/* DOCUMENT SIDEBAR */}
-                {/* ================================= */}
+             {/* ================================= */}
+{/* DOCUMENT SIDEBAR */}
+{/* ================================= */}
 
-                <aside className="document-sidebar">
+<aside className="document-sidebar dashboard-sidebar">
 
-                    <div className="sidebar-header">
+    {/* SIDEBAR HEADER */}
+    <div className="sidebar-header dashboard-sidebar-header">
 
-                        <div>
+        <div className="sidebar-heading">
 
-                            <h2>
-                                My Documents
-                            </h2>
+            <div className="sidebar-title-row">
 
-                            <span>
-                                {
-                                    documents.length
-                                }{" "}
-                                document
-                                {
-                                    documents.length !==
-                                    1
-                                        ? "s"
+                <div className="sidebar-title-icon">
+                    📁
+                </div>
+
+                <h2>
+                    My Documents
+                </h2>
+
+                <span className="document-count-badge">
+                    {documents.length}
+                </span>
+
+            </div>
+
+            <p className="sidebar-subtitle">
+                Your workspace documents
+            </p>
+
+        </div>
+
+
+        <button
+            type="button"
+            className="sidebar-add-button"
+            onClick={() =>
+                setShowCreateForm(true)
+            }
+            title="Create new document"
+            aria-label="Create new document"
+        >
+            +
+        </button>
+
+    </div>
+
+
+    {/* DOCUMENT SUMMARY */}
+    <div className="document-summary">
+
+        <div className="summary-item">
+
+            <span className="summary-label">
+                Documents
+            </span>
+
+            <strong>
+                {documents.length}
+            </strong>
+
+        </div>
+
+
+        <div className="summary-divider"></div>
+
+
+        <div className="summary-item">
+
+            <span className="summary-label">
+                Selected
+            </span>
+
+            <strong>
+                {selectedDocument ? "1" : "0"}
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    {/* DOCUMENT CONTENT */}
+    <div className="sidebar-document-content">
+
+        {loading &&
+        documents.length === 0 ? (
+
+            /* LOADING STATE */
+
+            <div className="documents-empty-state loading-state">
+
+                <div className="empty-state-icon loading-icon">
+                    ⟳
+                </div>
+
+                <h3>
+                    Loading documents
+                </h3>
+
+                <p>
+                    Preparing your workspace
+                </p>
+
+            </div>
+
+        ) : documents.length === 0 ? (
+
+            /* EMPTY STATE */
+
+            <div className="documents-empty-state">
+
+                <div className="empty-state-icon">
+                    📄
+                </div>
+
+                <h3>
+                    No documents yet
+                </h3>
+
+                <p>
+                    Create your first document
+                    and start collaborating.
+                </p>
+
+                <button
+                    type="button"
+                    className="primary-button empty-create-button"
+                    onClick={() =>
+                        setShowCreateForm(true)
+                    }
+                >
+                    + Create Document
+                </button>
+
+            </div>
+
+        ) : (
+
+            /* DOCUMENT LIST */
+
+            <div className="document-list dashboard-document-list">
+
+                <div className="document-list-heading">
+
+                    <span className="document-list-label">
+                        RECENT DOCUMENTS
+                    </span>
+
+                    <span className="document-list-count">
+                        {documents.length}
+                    </span>
+
+                </div>
+
+
+                {documents.map(
+                    (document) => {
+
+                        const blockCount =
+                            document.nodes?.length ||
+                            0;
+
+                        const updatedDate =
+                            document.updatedAt
+                                ? new Date(
+                                      document.updatedAt
+                                  ).toLocaleDateString(
+                                      undefined,
+                                      {
+                                          day: "numeric",
+                                          month: "short",
+                                          year: "numeric",
+                                      }
+                                  )
+                                : "Recently";
+
+
+                        const isSelected =
+                            selectedDocument?._id ===
+                            document._id;
+
+
+                        return (
+                            <button
+                                key={document._id}
+                                type="button"
+                                className={`document-card dashboard-document-card ${
+                                    isSelected
+                                        ? "active"
                                         : ""
+                                }`}
+                                onClick={() =>
+                                    openDocument(
+                                        document
+                                    )
                                 }
-                            </span>
+                            >
 
-                        </div>
+                                {/* DOCUMENT ICON */}
 
-                    </div>
+                                <div
+                                    className={`document-card-icon ${
+                                        isSelected
+                                            ? "selected"
+                                            : ""
+                                    }`}
+                                >
+                                    📄
+                                </div>
 
-                    {loading &&
-                    documents.length ===
-                        0 ? (
 
-                        <p className="empty-message">
-                            Loading documents...
-                        </p>
+                                {/* DOCUMENT INFORMATION */}
 
-                    ) : documents.length ===
-                      0 ? (
+                                <div className="document-card-content">
 
-                        <p className="empty-message">
-                            No documents yet.
-                        </p>
-
-                    ) : (
-
-                        <div className="document-list">
-
-                            {documents.map(
-                                (document) => (
-
-                                    <button
-                                        key={
-                                            document._id
-                                        }
-                                        className={`document-card ${
-                                            selectedDocument?._id ===
-                                            document._id
-                                                ? "active"
-                                                : ""
-                                        }`}
-                                        onClick={() =>
-                                            openDocument(
-                                                document
-                                            )
+                                    <strong
+                                        className="document-card-title"
+                                        title={
+                                            document.title
                                         }
                                     >
+                                        {document.title}
+                                    </strong>
 
-                                        <strong>
-                                            {
-                                                document.title
-                                            }
-                                        </strong>
 
-                                        <span>
-                                            {
-                                                document
-                                                    .nodes
-                                                    ?.length ||
-                                                0
-                                            }{" "}
-                                            block
-                                            {
-                                                document
-                                                    .nodes
-                                                    ?.length !==
-                                                1
-                                                    ? "s"
-                                                    : ""
-                                            }
-                                        </span>
-
-                                    </button>
-
-                                )
-                            )}
-
-                        </div>
-
-                    )}
-
-                </aside>
-
-                {/* ================================= */}
-                {/* EDITOR */}
-                {/* ================================= */}
-
-                <section className="editor-workspace">
-
-                    {!selectedDocument ? (
-
-                        <div className="editor-empty">
-
-                            <div className="empty-icon">
-                                📄
-                            </div>
-
-                            <h2>
-                                Select a document
-                            </h2>
-
-                            <p>
-                                Choose a document from
-                                the sidebar to start
-                                editing.
-                            </p>
-
-                        </div>
-
-                    ) : (
-
-                        <>
-
-                            {/* ========================= */}
-                            {/* EDITOR HEADER */}
-                            {/* ========================= */}
-
-                            <div className="editor-header">
-
-                                <div className="editor-title-section">
-
-                                    <input
-                                        className="document-title-input"
-                                        value={
-                                            title
-                                        }
-                                       onChange={(event) => {
-    const newTitle =
-        event.target.value;
-
-    setTitle(newTitle);
-
-    setHasUnsavedChanges(
-        true
-    );
-
-    if (selectedDocument) {
-        const ydoc =
-            getYDocument(
-                selectedDocument._id
-            );
-
-        ydoc
-            .getMap("document")
-            .set(
-                "title",
-                newTitle
-            );
-    }
-}}
-                                        placeholder="Document title"
-                                    />
-
-                                    <div className="editor-status">
+                                    <div className="document-card-meta">
 
                                         <span>
-                                            {
-                                                nodes.length
-                                            }{" "}
-                                            block
-                                            {
-                                                nodes.length !==
-                                                1
-                                                    ? "s"
-                                                    : ""
-                                            }
+                                            {blockCount}{" "}
+                                            {blockCount ===
+                                            1
+                                                ? "block"
+                                                : "blocks"}
                                         </span>
 
-                                       <span className="collaborator-count">
-    ● {Object.keys(connectedUsers).length + 1} users online
-</span>
-                                        
-                                        <span
-                                            className={
-                                                hasUnsavedChanges
-                                                    ? "save-status unsaved"
-                                                    : "save-status saved"
-                                            }
-                                        >
-                                            {hasUnsavedChanges
-                                                ? "● Unsaved changes"
-                                                : "✓ All changes saved"}
+
+                                        <span className="meta-dot">
+                                            •
+                                        </span>
+
+
+                                        <span>
+                                            {updatedDate}
                                         </span>
 
                                     </div>
 
                                 </div>
 
-                                <div className="editor-actions">
 
-                                 <button
-    className="secondary-button"
-    onClick={async () => {
-        try {
-            await saveDocument();
+                                {/* ACTIVE INDICATOR */}
 
-            window.open(
-                `http://localhost:5000/api/documents/${selectedDocument._id}/export/html`,
-                "_blank"
-            );
-        } catch (error) {
-            setMessage(
-                error.message ||
-                    "Failed to export HTML"
-            );
-        }
-    }}
-    disabled={loading}
->
-    {loading
-        ? "Preparing..."
-        : "Export HTML"}
-</button>
+                                {isSelected && (
+                                    <span className="document-selected-indicator">
+                                        ✓
+                                    </span>
+                                )}
 
-<button
-    className="secondary-button"
-    onClick={async () => {
-        try {
-            await saveDocument();
 
-            window.open(
-                `http://localhost:5000/api/documents/${selectedDocument._id}/export/pdf`,
-                "_blank"
-            );
-        } catch (error) {
-            setMessage(
-                error.message ||
-                    "Failed to export PDF"
-            );
-        }
-    }}
-    disabled={loading}
->
-    {loading
-        ? "Preparing..."
-        : "Export PDF"}
-</button>
+                                {/* ARROW */}
 
-<button
-    className="secondary-button"
-    onClick={
-        closeEditor
-    }
->
-    Close
-</button>
-                                    <button
-                                        className="danger-button"
-                                        onClick={
-                                            deleteDocument
-                                        }
-                                    >
-                                        Delete
-                                    </button>
+                                {!isSelected && (
+                                    <span className="document-card-arrow">
+                                        →
+                                    </span>
+                                )}
 
-                                    <button
-                                        className="primary-button"
-                                        onClick={
-                                            saveDocument
-                                        }
-                                        disabled={
-                                            loading
-                                        }
-                                    >
-                                        {loading
-                                            ? "Saving..."
-                                            : "Save"}
-                                    </button>
+                            </button>
+                        );
+                    }
+                )}
 
-                                </div>
+            </div>
 
-                            </div>
+        )}
 
+    </div>
+
+</aside>
+
+                {/* ================================= */}
+                {/* EDITOR */}
+                {/* ================================= */}
+
+              <section className="editor-workspace">
+
+    {!selectedDocument ? (
+
+        <div className="workspace-dashboard">
+
+            {/* ================================
+                WELCOME SECTION
+            ================================= */}
+
+            <div className="dashboard-welcome">
+
+                <div className="welcome-content">
+
+                    <span className="welcome-eyebrow">
+                        SYNC DOC WORKSPACE
+                    </span>
+
+                    <h2>
+                        Your documents,
+                        <br />
+                        <span>in sync.</span>
+                    </h2>
+
+                    <p>
+                        Create, edit and collaborate
+                        on documents in real time
+                        from one workspace.
+                    </p>
+
+                    <button
+                        type="button"
+                        className="dashboard-create-button"
+                        onClick={() =>
+                            setShowCreateForm(true)
+                        }
+                    >
+                        <span>+</span>
+                        Create New Document
+                    </button>
+
+                </div>
+
+
+                <div className="welcome-visual">
+
+                    <div className="visual-window">
+
+                        <div className="visual-window-header">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+
+                        <div className="visual-document">
+
+                            <div className="visual-line visual-line-title"></div>
+
+                            <div className="visual-line"></div>
+
+                            <div className="visual-line visual-line-short"></div>
+
+                            <div className="visual-block"></div>
+
+                            <div className="visual-line"></div>
+
+                            <div className="visual-line visual-line-medium"></div>
+
+                        </div>
+
+                        <div className="visual-collaborator">
+
+                            <span className="visual-avatar">
+                                A
+                            </span>
+
+                            <span>
+                                Collaborating in real time
+                            </span>
+
+                            <span className="visual-online-dot"></span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            {/* ================================
+                QUICK STATS
+            ================================= */}
+
+            <div className="dashboard-stat-grid">
+
+                <div className="dashboard-stat-card">
+
+                    <div className="dashboard-stat-icon">
+                        📄
+                    </div>
+
+                    <div>
+
+                        <span>
+                            Documents
+                        </span>
+
+                        <strong>
+                            {documents.length}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <div className="dashboard-stat-card">
+
+                    <div className="dashboard-stat-icon collaboration">
+                        👥
+                    </div>
+
+                    <div>
+
+                        <span>
+                            Workspace
+                        </span>
+
+                        <strong>
+                            Active
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <div className="dashboard-stat-card">
+
+                    <div className="dashboard-stat-icon sync">
+                        ↻
+                    </div>
+
+                    <div>
+
+                        <span>
+                            Collaboration
+                        </span>
+
+                        <strong>
+                            Real-time
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            {/* ================================
+                FEATURES
+            ================================= */}
+
+            <div className="dashboard-features">
+
+                <div className="dashboard-section-heading">
+
+                    <div>
+
+                        <span>
+                            WORKSPACE FEATURES
+                        </span>
+
+                        <h3>
+                            Everything you need to
+                            work together
+                        </h3>
+
+                    </div>
+
+                </div>
+
+
+                <div className="feature-grid">
+
+                    <div className="feature-card">
+
+                        <div className="feature-icon">
+                            ⚡
+                        </div>
+
+                        <div>
+
+                            <h4>
+                                Real-time collaboration
+                            </h4>
+
+                            <p>
+                                Edit documents together
+                                and see changes instantly.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div className="feature-card">
+
+                        <div className="feature-icon">
+                            🧩
+                        </div>
+
+                        <div>
+
+                            <h4>
+                                Block-based editing
+                            </h4>
+
+                            <p>
+                                Organize content into
+                                flexible document blocks.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div className="feature-card">
+
+                        <div className="feature-icon">
+                            ↶
+                        </div>
+
+                        <div>
+
+                            <h4>
+                                Collaborative history
+                            </h4>
+
+                            <p>
+                                Undo and redo changes
+                                while working together.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div className="feature-card">
+
+                        <div className="feature-icon">
+                            ↓
+                        </div>
+
+                        <div>
+
+                            <h4>
+                                Export anywhere
+                            </h4>
+
+                            <p>
+                                Export your documents
+                                to HTML and PDF.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    ) : (
+
+                        <>
+
+                            {/* ========================= */}
+{/* EDITOR HEADER */}
+{/* ========================= */}
+
+<div className="editor-header">
+
+    {/* DOCUMENT INFORMATION */}
+    <div className="editor-title-section">
+
+        <div className="editor-title-row">
+
+            <div className="document-icon">
+                📄
+            </div>
+
+            <input
+                className="document-title-input"
+                value={title}
+                onChange={(event) => {
+                    const newTitle =
+                        event.target.value;
+
+                    setTitle(newTitle);
+
+                    setHasUnsavedChanges(
+                        true
+                    );
+
+                    if (selectedDocument) {
+                        const ydoc =
+                            getYDocument(
+                                selectedDocument._id
+                            );
+
+                        ydoc
+                            .getMap("document")
+                            .set(
+                                "title",
+                                newTitle
+                            );
+                    }
+                }}
+                placeholder="Document title"
+            />
+
+        </div>
+
+
+        {/* STATUS INFORMATION */}
+
+        <div className="editor-status">
+
+            <span className="editor-status-item">
+                {nodes.length}{" "}
+                {nodes.length === 1
+                    ? "block"
+                    : "blocks"}
+            </span>
+
+
+            <span className="editor-status-divider">
+                •
+            </span>
+
+
+            <span className="collaborator-count">
+                <span className="online-dot"></span>
+                {Object.keys(
+                    connectedUsers
+                ).length + 1}{" "}
+                online
+            </span>
+
+
+            <span className="editor-status-divider">
+                •
+            </span>
+
+
+            <span
+                className={
+                    hasUnsavedChanges
+                        ? "save-status unsaved"
+                        : "save-status saved"
+                }
+            >
+                {hasUnsavedChanges
+                    ? "● Unsaved changes"
+                    : "✓ All changes saved"}
+            </span>
+
+        </div>
+
+    </div>
+
+
+    {/* EDITOR ACTIONS */}
+
+    <div className="editor-actions">
+
+        <button
+            className="secondary-button"
+            onClick={async () => {
+                try {
+                    await saveDocument();
+
+                    window.open(
+                        `http://localhost:5000/api/documents/${selectedDocument._id}/export/html`,
+                        "_blank"
+                    );
+                } catch (error) {
+                    setMessage(
+                        error.message ||
+                            "Failed to export HTML"
+                    );
+                }
+            }}
+            disabled={loading}
+            title="Export document as HTML"
+        >
+            {loading
+                ? "Preparing..."
+                : "Export HTML"}
+        </button>
+
+
+        <button
+            className="secondary-button"
+            onClick={async () => {
+                try {
+                    await saveDocument();
+
+                    window.open(
+                        `http://localhost:5000/api/documents/${selectedDocument._id}/export/pdf`,
+                        "_blank"
+                    );
+                } catch (error) {
+                    setMessage(
+                        error.message ||
+                            "Failed to export PDF"
+                    );
+                }
+            }}
+            disabled={loading}
+            title="Export document as PDF"
+        >
+            {loading
+                ? "Preparing..."
+                : "Export PDF"}
+        </button>
+
+
+        <button
+            className="secondary-button"
+            onClick={closeEditor}
+        >
+            Close
+        </button>
+
+
+        <button
+            className="danger-button"
+            onClick={deleteDocument}
+        >
+            Delete
+        </button>
+
+
+        <button
+            className="primary-button"
+            onClick={saveDocument}
+            disabled={loading}
+        >
+            {loading
+                ? "Saving..."
+                : "Save"}
+        </button>
+
+    </div>
+
+</div>
                             {/* ========================= */}
                             {/* BLOCK TOOLBAR */}
                             {/* ========================= */}

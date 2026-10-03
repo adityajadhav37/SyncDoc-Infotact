@@ -807,7 +807,9 @@ console.log(
             documentId,
             blockId,
             cursorPosition,
+            selectionEnd,
             clientId,
+            collaboratorName,
         }) => {
             if (
                 !documentId ||
@@ -821,15 +823,17 @@ console.log(
             const room =
                 `document:${documentId}`;
 
-            // Send cursor position to other
-            // collaborators in the same document.
+            // Send cursor position and selection
+            // information to other collaborators.
             socket.to(room).emit(
                 "cursor-position",
                 {
                     documentId,
                     blockId,
                     cursorPosition,
+                    selectionEnd,
                     clientId,
+                    collaboratorName,
                 }
             );
 

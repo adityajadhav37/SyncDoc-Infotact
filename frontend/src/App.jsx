@@ -503,6 +503,29 @@ const handleUserLeftDocument = ({
         }
     );
 
+    // Remove any stale cursor or selection
+    // belonging to the collaborator who left.
+    setCursorPositions(
+        (current) => {
+            const updated = {};
+
+            Object.entries(current).forEach(
+                ([blockId, cursor]) => {
+                    if (
+                        cursor &&
+                        cursor.clientId !==
+                            leftClientId
+                    ) {
+                        updated[blockId] =
+                            cursor;
+                    }
+                }
+            );
+
+            return updated;
+        }
+    );
+
     console.log(
         `User ${leftClientId} left the document`
     );
